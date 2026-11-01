@@ -126,14 +126,25 @@ final class AutoFillState {
             fail(.matchedExcludedCredential) // the site already has one of our passkeys for this account
             return
         }
-        // A QuickType pick fills immediately after unlock.
+        // A QuickType pick fills immediately after unlock. Unlocking was the user verification, so no second tap.
         if let preselect, let item = items.first(where: { $0.id == preselect }) {
             if mode == .passkey, let pk = passkeyCandidates.first(where: { $0.item.id == preselect }) {
                 Task { await signIn(pk.item, pk.passkey) }
             } else if mode != .passkey {
                 fill(item)
             }
+        } else if let only = namedPasskey {
+            Task { await signIn(only.item, only.passkey) }
         }
+    }
+
+    /// The one passkey the site itself named (its allow list) when we hold exactly that one. The user already chose
+    /// the credential in the system or browser sheet, so listing it again for a "Sign In" tap only repeats that choice.
+    /// Discoverable requests (empty allow list) keep the list, since the user still has to pick the account.
+    private var namedPasskey: (item: VaultItem, passkey: PasskeyCredential)? {
+        guard mode == .passkey, preselect == nil, let request = passkeyRequest, !request.credentialIDs.isEmpty else { return nil }
+        let found = passkeyCandidates
+        return found.count == 1 ? found.first : nil
     }
 
     // MARK: Passkeys

@@ -1603,9 +1603,22 @@ enum SelfTest {
                 signIn.begin(passkey: .init(rpId: "passkeys.example", clientDataHash: hash), registering: false)
                 signIn.selectedAccountID = firstID
                 await signIn.unlock(password: password)
+                check(asserted == nil, "AutoFill: a discoverable passkey request waits for an account choice")
                 if let c = signIn.passkeyCandidates.first { await signIn.signIn(c.item, c.passkey) }
                 check(asserted != nil && asserted?.credentialID == registered?.credentialID
                       && asserted?.userHandle == Data("u-2".utf8), "AutoFill: sign in with that passkey from the cached vault")
+                // The site named this credential: unlocking is the only step, no extra "Sign In" tap.
+                var named: ASPasskeyAssertionCredential?
+                let byName = AutoFillState()
+                byName.completeAssertion = { named = $0 }
+                byName.begin(passkey: .init(rpId: "passkeys.example", clientDataHash: hash,
+                                            credentialIDs: registered.map { [$0.credentialID] } ?? []), registering: false)
+                byName.selectedAccountID = firstID
+                await byName.unlock(password: password)
+                // The sign-in runs in a task started by the unlock; poll only until it completes.
+                for _ in 0..<50 where named == nil { try? await Task.sleep(for: .milliseconds(10)) }
+                check(named != nil && named?.credentialID == registered?.credentialID,
+                      "AutoFill: a site-named passkey signs in right after unlock")
                 try? await model.refresh()
                 if let made = model.items.first(where: { $0.passkeys.first?.rpId == "passkeys.example" }) { await model.deleteForever(made) }
             }
