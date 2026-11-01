@@ -647,7 +647,10 @@ enum Snapshot {
                    to: dir.appending(path: "palette-\(slug)-dark.png"))
         }
         let lockedPalette = AppModel()
-        lockedPalette.setPreviewAccounts(vault.accounts)
+        lockedPalette.setPreviewAccounts(vault.accounts + [
+            SavedAccount(id: "work", email: "alex@work.example", serverKind: "bitwardenUS", serverURL: "",
+                         kdf: .pbkdf2(iterations: 600_000), protectedUserKey: "")
+        ])
         lockedPalette.phase = .locked
         render(desktop(CommandPalette(close: {}).environment(lockedPalette).tint(.brand), dark: true),
                size: CGSize(width: 760, height: 420), appearance: .darkAqua, to: dir.appending(path: "palette-locked-dark.png"))
