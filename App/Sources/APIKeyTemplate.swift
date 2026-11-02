@@ -88,7 +88,7 @@ extension AppModel {
         }
     }
 
-    /// From the app menu or the palette: the same setup sheet as Tools, over whatever page is open.
+    /// From the app menu or the palette: the same setup sheet as Apps & Projects, over whatever page is open.
     func showHelperSetup() {
         guard showsAPIKeyTools else { return }
         dismissHelpPanels()

@@ -145,7 +145,7 @@ struct ToolLaunchesPane: View {
     private func header(total: Int) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Tools").font(.system(size: 22, weight: .bold))
+                Text("Apps & Projects").font(.system(size: 22, weight: .bold))
                 if total > 0 {
                     Text(verbatim: String(total)).font(.system(size: 13, weight: .medium)).monospacedDigit().foregroundStyle(.tertiary)
                 }
@@ -156,7 +156,7 @@ struct ToolLaunchesPane: View {
                         .frame(width: 30, height: 30).modifier(HeaderChrome(shape: .circle))
                         .help("Setup Guide").accessibilityIdentifier("toolSetupGuide")
                     ActionMenu(entries: workspaceActions) { moreIcon }
-                        .accessibilityLabel("Tools options")
+                        .accessibilityLabel("Apps & Projects options")
                     if total > 0 {
                         Button { replacement = nil; choosingKey = true } label: { Label("Add Tool", systemImage: "plus") }
                             .buttonStyle(.appPrimarySmall).accessibilityIdentifier("addTool")
@@ -281,7 +281,7 @@ struct ToolLaunchesPane: View {
                 if back {
                     HStack {
                         Button { compactDetail = false } label: {
-                            Label("Tools", systemImage: "chevron.left").font(.system(size: 13, weight: .medium))
+                            Label("Apps & Projects", systemImage: "chevron.left").font(.system(size: 13, weight: .medium))
                         }.buttonStyle(.plain).accessibilityIdentifier("backToTools")
                         Spacer(minLength: 0)
                     }.padding(.horizontal, 24).padding(.top, 14)

@@ -13779,6 +13779,110 @@
         }
       }
     },
+    "Apps & Projects": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリとプロジェクト"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用与项目"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "應用程式與專案"
+          }
+        },
+        "zh-HK": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "應用程式與專案"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 및 프로젝트"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applications et projets"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicaciones y proyectos"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แอปและโปรเจกต์"
+          }
+        }
+      }
+    },
+    "Show local API key features": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローカル API キー機能を表示"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示本地 API 密钥功能"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示本機 API 金鑰功能"
+          }
+        },
+        "zh-HK": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示本機 API 密鑰功能"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 API 키 기능 표시"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les fonctions de clés API locales"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar funciones de claves API locales"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงฟีเจอร์คีย์ API ภายในเครื่อง"
+          }
+        }
+      }
+    },
     "Appearance": {
       "localizations": {
         "ja": {
@@ -67403,6 +67507,58 @@
         }
       }
     },
+    "Utilities": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ユーティリティ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实用工具"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "實用工具"
+          }
+        },
+        "zh-HK": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "實用工具"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "유틸리티"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilitaires"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilidades"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยูทิลิตี้"
+          }
+        }
+      }
+    },
     "Value": {
       "localizations": {
         "ja": {
@@ -80156,54 +80312,54 @@
         }
       }
     },
-    "Copy the launch from Tools": {
+    "Copy the launch from Apps & Projects": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「ツール」から起動コマンドをコピー"
+            "value": "「アプリとプロジェクト」から起動コマンドをコピー"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "从“工具”复制启动命令"
+            "value": "从“应用与项目”复制启动命令"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "從「工具」拷貝啟動指令"
+            "value": "從「應用程式與專案」拷貝啟動指令"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "喺「工具」複製啟動指令"
+            "value": "喺「應用程式與專案」複製啟動指令"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "'도구'에서 실행 명령 복사"
+            "value": "'앱 및 프로젝트'에서 실행 명령 복사"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copier le lancement depuis Outils"
+            "value": "Copier le lancement depuis Applications et projets"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copiar el inicio desde Herramientas"
+            "value": "Copiar el inicio desde Aplicaciones y proyectos"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "คัดลอกคำสั่งเรียกใช้จากเครื่องมือ"
+            "value": "คัดลอกคำสั่งเรียกใช้จากแอปและโปรเจกต์"
           }
         }
       }
@@ -83224,54 +83380,54 @@
         }
       }
     },
-    "Missing key: open the tool in Tools and choose the key again.": {
+    "Missing key: open the tool in Apps & Projects and choose the key again.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーが見つかりません：「ツール」でツールを開き、キーを選び直してください。"
+            "value": "キーが見つかりません：「アプリとプロジェクト」でツールを開き、キーを選び直してください。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "缺少密钥：请在“工具”中打开此工具，然后重新选择密钥。"
+            "value": "缺少密钥：请在“应用与项目”中打开此工具，然后重新选择密钥。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "缺少金鑰：請在「工具」中開啟此工具，然後重新選擇金鑰。"
+            "value": "缺少金鑰：請在「應用程式與專案」中開啟此工具，然後重新選擇金鑰。"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "缺少密鑰：請喺「工具」開啟呢個工具，再揀過條密鑰。"
+            "value": "缺少密鑰：請喺「應用程式與專案」開啟呢個工具，再揀過條密鑰。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "키가 없습니다: '도구'에서 도구를 열고 키를 다시 선택하세요."
+            "value": "키가 없습니다: '앱 및 프로젝트'에서 도구를 열고 키를 다시 선택하세요."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clé manquante : ouvrez l'outil dans Outils et choisissez à nouveau la clé."
+            "value": "Clé manquante : ouvrez l'outil dans Applications et projets et choisissez à nouveau la clé."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falta una clave: abre la herramienta en Herramientas y vuelve a elegir la clave."
+            "value": "Falta una clave: abre la herramienta en Aplicaciones y proyectos y vuelve a elegir la clave."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ไม่พบคีย์: เปิดเครื่องมือใน เครื่องมือ แล้วเลือกคีย์อีกครั้ง"
+            "value": "ไม่พบคีย์: เปิดเครื่องมือในแอปและโปรเจกต์ แล้วเลือกคีย์อีกครั้ง"
           }
         }
       }
@@ -84472,54 +84628,54 @@
         }
       }
     },
-    "Open Tools": {
+    "Open Apps & Projects": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「ツール」を開く"
+            "value": "「アプリとプロジェクト」を開く"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开“工具”"
+            "value": "打开“应用与项目”"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "開啟「工具」"
+            "value": "開啟「應用程式與專案」"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "開啟「工具」"
+            "value": "開啟「應用程式與專案」"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도구 열기"
+            "value": "앱 및 프로젝트 열기"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir Outils"
+            "value": "Ouvrir Applications et projets"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir Herramientas"
+            "value": "Abrir Aplicaciones y proyectos"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "เปิดเครื่องมือ"
+            "value": "เปิดแอปและโปรเจกต์"
           }
         }
       }
@@ -86136,54 +86292,54 @@
         }
       }
     },
-    "Remove an unused tool from Tools before you add another.": {
+    "Remove an unused tool from Apps & Projects before you add another.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "別のツールを追加する前に、「ツール」から使っていないツールを削除してください。"
+            "value": "別のツールを追加する前に、「アプリとプロジェクト」から使っていないツールを削除してください。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加其他工具前，请先从“工具”移除不用的工具。"
+            "value": "添加其他工具前，请先从“应用与项目”移除不用的工具。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "新增其他工具前，請先從「工具」移除不用的工具。"
+            "value": "新增其他工具前，請先從「應用程式與專案」移除不用的工具。"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "新增其他工具之前，請先喺「工具」移除冇用嘅工具。"
+            "value": "新增其他工具之前，請先喺「應用程式與專案」移除冇用嘅工具。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 도구를 추가하기 전에 '도구'에서 사용하지 않는 도구를 제거하세요."
+            "value": "다른 도구를 추가하기 전에 '앱 및 프로젝트'에서 사용하지 않는 도구를 제거하세요."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retirez un outil inutilisé dans Outils avant d'en ajouter un autre."
+            "value": "Retirez un outil inutilisé dans Applications et projets avant d'en ajouter un autre."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quita una herramienta que no uses en Herramientas antes de añadir otra."
+            "value": "Quita una herramienta que no uses en Aplicaciones y proyectos antes de añadir otra."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "นำเครื่องมือที่ไม่ได้ใช้ออกจาก เครื่องมือ ก่อนเพิ่มเครื่องมืออื่น"
+            "value": "นำเครื่องมือที่ไม่ได้ใช้ออกจากแอปและโปรเจกต์ก่อนเพิ่มเครื่องมืออื่น"
           }
         }
       }
@@ -91648,54 +91804,54 @@
         }
       }
     },
-    "Tool saved. Copy its launch from Tools.": {
+    "Tool saved. Copy its launch from Apps & Projects.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ツールを保存しました。「ツール」から起動コマンドをコピーしてください。"
+            "value": "ツールを保存しました。「アプリとプロジェクト」から起動コマンドをコピーしてください。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已保存工具。请从“工具”复制其启动命令。"
+            "value": "已保存工具。请从“应用与项目”复制其启动命令。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已儲存工具。請從「工具」拷貝其啟動指令。"
+            "value": "已儲存工具。請從「應用程式與專案」拷貝其啟動指令。"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "已儲存工具。請喺「工具」複製佢嘅啟動指令。"
+            "value": "已儲存工具。請喺「應用程式與專案」複製佢嘅啟動指令。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도구를 저장했습니다. '도구'에서 실행 명령을 복사하세요."
+            "value": "도구를 저장했습니다. '앱 및 프로젝트'에서 실행 명령을 복사하세요."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Outil enregistré. Copiez son lancement depuis Outils."
+            "value": "Outil enregistré. Copiez son lancement depuis Applications et projets."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Herramienta guardada. Copia su inicio desde Herramientas."
+            "value": "Herramienta guardada. Copia su inicio desde Aplicaciones y proyectos."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "บันทึกเครื่องมือแล้ว คัดลอกคำสั่งเรียกใช้จาก เครื่องมือ"
+            "value": "บันทึกเครื่องมือแล้ว คัดลอกคำสั่งเรียกใช้จากแอปและโปรเจกต์"
           }
         }
       }
@@ -91752,54 +91908,54 @@
         }
       }
     },
-    "Tools options": {
+    "Apps & Projects options": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ツールのオプション"
+            "value": "アプリとプロジェクトのオプション"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "工具选项"
+            "value": "应用与项目选项"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "工具選項"
+            "value": "應用程式與專案選項"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "工具選項"
+            "value": "應用程式與專案選項"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도구 옵션"
+            "value": "앱 및 프로젝트 옵션"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Options des outils"
+            "value": "Options des applications et projets"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opciones de herramientas"
+            "value": "Opciones de aplicaciones y proyectos"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ตัวเลือกเครื่องมือ"
+            "value": "ตัวเลือกแอปและโปรเจกต์"
           }
         }
       }
@@ -92896,54 +93052,54 @@
         }
       }
     },
-    "Unlock its account, resume it, or fix its keys in Tools.": {
+    "Unlock its account, resume it, or fix its keys in Apps & Projects.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アカウントのロックを解除するか、ツールを再開するか、「ツール」でキーを修正してください。"
+            "value": "アカウントのロックを解除するか、ツールを再開するか、「アプリとプロジェクト」でキーを修正してください。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请解锁其账户、恢复工具，或在“工具”中修正其密钥。"
+            "value": "请解锁其账户、恢复工具，或在“应用与项目”中修正其密钥。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "請解鎖其帳號、恢復工具，或在「工具」中修正其金鑰。"
+            "value": "請解鎖其帳號、恢復工具，或在「應用程式與專案」中修正其金鑰。"
           }
         },
         "zh-HK": {
           "stringUnit": {
             "state": "translated",
-            "value": "請解鎖佢嘅帳戶、恢復佢，或者喺「工具」修正佢嘅密鑰。"
+            "value": "請解鎖佢嘅帳戶、恢復佢，或者喺「應用程式與專案」修正佢嘅密鑰。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계정을 잠금 해제하거나, 도구를 재개하거나, '도구'에서 키를 수정하세요."
+            "value": "계정을 잠금 해제하거나, 도구를 재개하거나, '앱 및 프로젝트'에서 키를 수정하세요."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Déverrouillez son compte, reprenez-le ou corrigez ses clés dans Outils."
+            "value": "Déverrouillez son compte, reprenez-le ou corrigez ses clés dans Applications et projets."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desbloquea su cuenta, reanúdala o corrige sus claves en Herramientas."
+            "value": "Desbloquea su cuenta, reanúdala o corrige sus claves en Aplicaciones y proyectos."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ปลดล็อกบัญชี เปิดใช้ต่อ หรือแก้ไขคีย์ใน เครื่องมือ"
+            "value": "ปลดล็อกบัญชี เปิดใช้ต่อ หรือแก้ไขคีย์ในแอปและโปรเจกต์"
           }
         }
       }

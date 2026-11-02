@@ -19,7 +19,7 @@ struct SettingsView: View {
             case .security: String(localized: "Security")
             case .browser: String(localized: "Browser")
             case .developer: String(localized: "Developer")
-            case .secrets: String(localized: "Secrets")
+            case .secrets: String(localized: "Apps & Projects")
             case .server: String(localized: "Server")
             case .license: String(localized: "License")
             case .about: String(localized: "About")
@@ -697,15 +697,15 @@ private struct DeveloperSettings: View {
         let agent = model.sshAgent!
         Form {
             Section {
-                Toggle("Show API key tools", isOn: $model.showsAPIKeyTools)
+                Toggle("Show local API key features", isOn: $model.showsAPIKeyTools)
                     .accessibilityIdentifier("showAPIKeyTools")
                 if model.showsAPIKeyTools {
                     Button("Start Setup Guide…") { model.showToolGuide() }.disabled(!model.isUnlocked)
-                    Text("Unlock your vault, then open Tools to start the guide.")
+                    Text("Unlock your vault, then open Apps & Projects to start the guide.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } header: { Text("Local API keys") } footer: {
-                Text("Show API Keys, Tools, and API-key actions. Hiding them keeps saved keys and configured launches.")
+                Text("Show API Keys, Apps & Projects, and API-key actions. Hiding them keeps saved keys and configured launches.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
