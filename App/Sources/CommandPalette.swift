@@ -888,7 +888,7 @@ struct CommandPalette: View {
                                keywords: ["add", "create"]) { create(.secureNote) },
                 PaletteCommand(id: "new-api-key", title: String(localized: "New API Key"), symbol: "key.horizontal",
                                keywords: ["secret", "token", "provider", "add"]) { model.bringToFront(); model.beginAPIKey() },
-                PaletteCommand(id: "tools-projects", title: String(localized: "Apps & Projects"), symbol: "terminal",
+                PaletteCommand(id: "tools-projects", title: String(localized: "Secrets"), symbol: "terminal",
                                keywords: ["apps", "projects", "tools", "api", "key", "secret", "profile", "agent"]) { go(.toolLaunches) },
                 PaletteCommand(id: "install-tw", title: String(localized: "Install Terminal Helper"), symbol: "terminal",
                                keywords: ["tw", "cli", "command line", "path", "helper", "shell"]) { model.showHelperSetup() },
