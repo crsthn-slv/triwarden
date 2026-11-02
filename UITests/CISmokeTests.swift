@@ -67,7 +67,7 @@ final class CISmokeTests: XCTestCase {
         XCTAssertFalse(editorName.exists)
     }
 
-    func testAppsProjectsSettingsUsesReferences() {
+    func testSecretsSettingsUsesReferences() {
         continueAfterFailure = false
         let app = launchDemo(apiKeyTools: true)
         defer { app.terminate() }
@@ -76,9 +76,9 @@ final class CISmokeTests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
         app.menuBars.menuBarItems["Triwarden"].click()
         app.menuBars.menuBarItems["Triwarden"].menus.menuItems["Settings…"].firstMatch.click()
-        let appsAndProjects = app.outlines.staticTexts["Apps & Projects"].firstMatch
-        XCTAssertTrue(appsAndProjects.waitForExistence(timeout: 5))
-        appsAndProjects.click()
+        let secrets = app.outlines.staticTexts["Secrets"].firstMatch
+        XCTAssertTrue(secrets.waitForExistence(timeout: 5))
+        secrets.click()
         XCTAssertTrue(app.buttons["Open Apps & Projects"].firstMatch.waitForExistence(timeout: 5))
         app.buttons["Advanced Launch Settings…"].firstMatch.click()
         XCTAssertTrue(app.textFields["secretsProfileName"].waitForExistence(timeout: 5))

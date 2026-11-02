@@ -19,7 +19,7 @@ struct SettingsView: View {
             case .security: String(localized: "Security")
             case .browser: String(localized: "Browser")
             case .developer: String(localized: "Developer")
-            case .secrets: String(localized: "Apps & Projects")
+            case .secrets: String(localized: "Secrets")
             case .server: String(localized: "Server")
             case .license: String(localized: "License")
             case .about: String(localized: "About")
