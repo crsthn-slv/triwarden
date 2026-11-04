@@ -39,7 +39,10 @@ struct ToolSetupGuide: View {
         if model.previewUnlocked { unlocked.formUnion(model.accounts.map(\.id)) }
         #endif
         return .init(profiles: profiles, items: model.items, unlocked: unlocked,
-                     configurationError: model.secrets.lastError != nil, configuredAccounts: Set(model.accounts.map(\.id)))
+                     configurationError: model.secrets.lastError != nil, configuredAccounts: Set(model.accounts.map(\.id)),
+                     accountLabels: Dictionary(uniqueKeysWithValues: model.accounts.map {
+                         ($0.id, $0.email + " · " + $0.serverSummary)
+                     }))
     }
     private var target: ToolBrowserIndex.Entry? { index.entries.first { $0.id == selectedTool } }
     private var toolReady: Bool { target?.availability == .ready }
@@ -307,7 +310,9 @@ struct ToolSetupGuide: View {
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.panelEdge))
                 if target != nil, !toolReady {
                     HStack(spacing: 10) {
-                        Text("Unlock its account, resume it, or fix its keys in Secrets.").font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text(verbatim: target?.keys.first(where: { $0.problem != nil })?.problem
+                             ?? String(localized: "Open Secrets to resume this tool or fix its keys."))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
                         Button("Open Secrets") { dismiss(); model.requestedToolSelection = selectedTool; model.requestedSection = .toolLaunches }
                             .buttonStyle(.appSecondarySmall)
                     }.padding(.horizontal, 4)
