@@ -68,14 +68,15 @@ with `completeUntilFirstUserAuthentication` file protection, and both the app an
   quits with Triwarden. Typing takes the same Touch ID / re-prompt as copying. Matching a browser tab is off
   by default. When it is on, the palette and the menu bar ask the front browser for its tab's address over
   Apple Events (macOS asks once per browser), only to put that site's logins first.
-- **Browser extension** (off by default; Safari, and Chrome/Edge/Brave through `tw` as the native host)
+- **Browser extension** (off by default; Safari, and Chrome/Edge/Brave and Firefox through `tw` as the native host)
   stores nothing and holds no keys. The page URL comes from the browser, not the page. Suggestions are names
   and usernames for that site only, and only our own bundled binaries may ask for them. Filling needs Touch ID
   and only fills a login on its own site. Saving or updating a login always asks you in the app first.
 - **Shortcuts / Spotlight actions** only expose item names and usernames. Copying a password or a code works
   only while unlocked, and passwords go through the same concealed, auto-clearing clipboard.
-- **Update check** is off by default. When on, it asks GitHub's public API for the latest release number once a
-  day and links to the release page. It never downloads or installs anything by itself.
+- **Updates** are off by default. A manual check, or daily checks after you enable them, reads the signed Sparkle
+  appcast attached to the latest GitHub release. Triwarden verifies the EdDSA signature and Apple's notarization
+  before installation. Automatic download and installation is a separate opt-in setting.
 - **Leaked-password check** (Watchtower) uses the Have I Been Pwned k-anonymity range API with padding.
   Only the first 5 hex characters of each SHA-1 are sent.
 - **Self-hosted servers**: public `http://` servers are refused, while local-network `http://` is allowed for

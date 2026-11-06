@@ -20,4 +20,4 @@ Summary (aligned with the app and site code):
 - Enabled website icons send domain names to the account’s configured Vaultwarden or Bitwarden icon service.
 - The marketing site is static; it may fetch public GitHub release/star metadata, loads Google Fonts
   ([Google Privacy Policy](https://policies.google.com/privacy)), and stores light/dark theme in `localStorage` only.
-- For privacy questions, email [triwarden@protonmail.com](mailto:triwarden@protonmail.com).
+- For privacy questions, email [support@triwarden.cc](mailto:support@triwarden.cc).

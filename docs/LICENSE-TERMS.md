@@ -9,7 +9,7 @@ the GPL is a separate right and is not limited by these paid-key terms.
 
 They are an honour system: the app does not enforce a device seat count.
 
-For purchase or product questions, email [triwarden@protonmail.com](mailto:triwarden@protonmail.com).
+For purchase or product questions, email [support@triwarden.cc](mailto:support@triwarden.cc).
 
 ## One person, your Macs
 

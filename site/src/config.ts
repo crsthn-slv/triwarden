@@ -8,7 +8,7 @@ export const SITE = {
   name: "Triwarden",
   repo,
   /** Fallback softwareVersion only. Home JSON-LD uses latestRelease() at build time; this applies when that lookup fails. The visible version is refreshed in the browser (scripts/release.ts). */
-  version: "0.4.0",
+  version: "0.8.1",
   /** One-time License price shown on the site. Must match Stripe and Komori before going live. */
   price: "US$19.99",
   // Fallback when the latest DMG can't be looked up (see release.ts).
@@ -23,8 +23,8 @@ export const SITE = {
   privacyPath: "privacy/",
   licenseTermsPath: "license-terms/",
   checkout: CHECKOUT_URL,
-  supportEmail: "triwarden@protonmail.com",
-  support: "mailto:triwarden@protonmail.com",
+  supportEmail: "support@triwarden.cc",
+  support: "mailto:support@triwarden.cc",
   stripePrivacy: "https://stripe.com/privacy",
   resendPrivacy: "https://resend.com/legal/privacy-policy",
   googleFontsPrivacy: "https://policies.google.com/privacy",
