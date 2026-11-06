@@ -377,8 +377,13 @@ struct CommandPalette: View {
         .onChange(of: model.quickSearchNonce, initial: true) {
             query = initialQuery; scopeTokens = []; index = 0
             promoteScopes()
-            // Locked: nothing to search until it's open, so the keyboard goes to the master password.
-            if showsUnlock { unlockFocusRequest += 1 } else { focused = true }
+            // Real opens bump quickSearchNonce in show(). Skip focus on the prepare() prebuild
+            // (nonce still 0): focusing the SecureField here makes AppKit order the hidden
+            // panel front — the 0.8.1 / #176 unlock-focus regression on cold launch.
+            if model.quickSearchNonce > 0 {
+                // Locked: nothing to search until it's open, so the keyboard goes to the master password.
+                if showsUnlock { unlockFocusRequest += 1 } else { focused = true }
+            }
             actionsFor = nil; flash = nil
             regenerate()
             if initialActions {
@@ -1016,6 +1021,7 @@ private struct ScopeChip: View {
 private struct PaletteUnlock: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.windowVisible) private var windowVisible
     @State private var password = ""
     /// Bumped by the palette each time it opens over the locked vault (the row stays alive between openings).
     var focusRequest = 0
@@ -1056,7 +1062,7 @@ private struct PaletteUnlock: View {
                     Spacer()
                     if hasPIN {
                         Button(pinMode ? "Use master password" : "Use PIN") {
-                            usePassword.toggle(); password = ""; model.errorMessage = nil; focused = true
+                            usePassword.toggle(); password = ""; model.errorMessage = nil; takeFocus()
                         }
                         .buttonStyle(.plain).foregroundStyle(.secondary)
                     }
@@ -1065,15 +1071,19 @@ private struct PaletteUnlock: View {
                 .lineLimit(1)
             }
             .padding(12)
-            .onAppear { focused = true }
+            // Don't focus while the panel is still ordered out (prepare() prebuilds this view).
+            // Focusing the SecureField then makes AppKit order the hidden panel front.
+            .onChange(of: windowVisible) { _, visible in
+                if visible { takeFocus() } else { focused = false }
+            }
             .onChange(of: account.id) { resetForAccountChange() }
-            .onChange(of: focusRequest) { Task { @MainActor in focused = true } }
+            .onChange(of: focusRequest) { Task { @MainActor in takeFocus() } }
             // Let go on close, so the next opening's request lands as a change.
             .onChange(of: model.quickSearchDismissNonce) { focused = false }
             .onChange(of: model.errorMessage) { _, message in
                 guard message != nil else { return }
                 password = ""
-                Task { @MainActor in focused = true }
+                Task { @MainActor in takeFocus() }
             }
         } else {
             HStack {
@@ -1134,11 +1144,20 @@ private struct PaletteUnlock: View {
         resetForAccountChange()
     }
 
+    /// Focus the unlock field only while the palette window is actually on screen.
+    /// `windowVisible` can lag one main-loop turn behind AppKit after `show()`; also
+    /// accept a QuickSearchPanel that is already `isVisible`.
+    private func takeFocus() {
+        let panelVisible = NSApp.windows.contains { $0 is QuickSearchPanel && $0.isVisible }
+        guard windowVisible || panelVisible else { return }
+        focused = true
+    }
+
     private func resetForAccountChange() {
         password = ""
         usePassword = false
         model.errorMessage = nil
-        focused = true
+        takeFocus()
     }
 
     private func submit() {
