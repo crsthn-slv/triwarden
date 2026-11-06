@@ -1159,7 +1159,7 @@ private struct AboutSettings: View {
     @State private var copiedVersion = false
 
     private static let repo = URL(string: "https://github.com/sinhong2011/triwarden")!
-    private static let support = URL(string: "mailto:triwarden@protonmail.com")!
+    private static let support = URL(string: "mailto:support@triwarden.cc")!
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "" }
     private var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
 
@@ -1237,7 +1237,7 @@ private struct AboutSettings: View {
                     HStack {
                         Label("Contact", systemImage: "envelope").labelStyle(SecondaryIconLabelStyle())
                         Spacer()
-                        Text(verbatim: "triwarden@protonmail.com")
+                        Text(verbatim: "support@triwarden.cc")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
