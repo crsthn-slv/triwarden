@@ -2027,8 +2027,8 @@ private struct InboxRow: View {
         .accessibilityIdentifier("inbox-note-" + note.id)
     }
 
-    /// Icon + title/subtitle. Whole-row press only when there is a single primary action (Retry, Install…).
-    /// Login-save rows keep the text static so Save / Not Now stay the clear targets.
+    /// Icon + title/subtitle. Whole-row press for single-action notices (Retry, Install…).
+    /// Login-save uses a trailing Save pill; swipe (hideInbox) declines — no Not Now button.
     @ViewBuilder private var leading: some View {
         let content = HStack(spacing: 8) {
             Image(systemName: note.symbol)
@@ -2048,7 +2048,7 @@ private struct InboxRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
 
-        if note.secondaryTitle == nil, note.primaryTitle != nil {
+        if note.kind != .loginSave, note.secondaryTitle == nil, note.primaryTitle != nil {
             Button(action: note.primary) {
                 content.contentShape(.rect)
             }
@@ -2060,7 +2060,7 @@ private struct InboxRow: View {
 
     @ViewBuilder private var actions: some View {
         if let secondaryTitle = note.secondaryTitle, let primaryTitle = note.primaryTitle {
-            // Capsules with real padding — borderless labels collided into "Not NowSave" in the 380pt popover.
+            // Dual actions that are not swipe-equivalent (e.g. Approve / Reject).
             HStack(spacing: 8) {
                 Button(secondaryTitle, action: note.secondary)
                     .buttonStyle(.appSecondarySmall)
@@ -2069,6 +2069,12 @@ private struct InboxRow: View {
             }
             .fixedSize(horizontal: true, vertical: false)
             .layoutPriority(1)
+        } else if note.kind == .loginSave, let primaryTitle = note.primaryTitle {
+            Button(primaryTitle, action: note.primary)
+                .buttonStyle(.appPrimarySmall)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
+                .accessibilityHint(Text("Swipe to dismiss without saving"))
         } else if note.secondaryTitle == nil, let primaryTitle = note.primaryTitle {
             Text(verbatim: primaryTitle)
                 .font(.system(size: 12, weight: .semibold))
@@ -2100,6 +2106,7 @@ private enum Inbox {
         var notes: [InboxNote] = []
         // Newest first: the login you just submitted is the one you're looking for.
         for save in model.cli.pendingSaves.reversed() {
+            // Decline is swipe (or Clear / context Dismiss): hideInbox → answerSave(false). No Not Now button.
             notes.append(InboxNote(
                 id: AppModel.loginSaveNotePrefix + save.id,
                 symbol: save.isUpdate ? "key.horizontal" : "key.fill",
@@ -2108,8 +2115,6 @@ private enum Inbox {
                 subtitle: save.detail,
                 primaryTitle: save.isUpdate ? String(localized: "Update") : String(localized: "Save"),
                 primary: { Task { await model.cli.answerSave(save.id, save: true) } },
-                secondaryTitle: String(localized: "Not Now"),
-                secondary: { Task { await model.cli.answerSave(save.id, save: false) } },
                 kind: .loginSave
             ))
         }
