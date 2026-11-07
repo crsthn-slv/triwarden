@@ -99,7 +99,11 @@ describe('GenerateOverlay', () => {
     expect(host.querySelector('.gen-slider')).not.toBeNull();
     expect(host.querySelectorAll('.gen-chip').length).toBe(4);
     expect(host.querySelector('.gen-strength-label')!.textContent).toBe('Very strong');
+    expect(host.querySelector('.gen-toggle[role="switch"]')).not.toBeNull();
+    expect(host.querySelector('.gen-mins')).not.toBeNull();
     expect(host.querySelector('.gen-use')!.textContent).toBe('Use Password');
+    // No native title tooltip that truncates over the controls.
+    expect(host.querySelector('.gen-row')!.getAttribute('title')).toBeNull();
     host.querySelector<HTMLButtonElement>('.gen-use')!.click();
     expect(document.querySelector<HTMLInputElement>('[name=p]')!.value).toBe('Gen3rated!Pw');
   });

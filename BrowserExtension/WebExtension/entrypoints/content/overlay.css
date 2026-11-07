@@ -310,75 +310,98 @@
 
 /* ---- Suggested password (Safari generate menu): mirrors the app compact Generator ---- */
 
-/* Drag handle on the Safari generate menu: grab the title; place sticks on pointer-up (X and Y). */
-.gen .gen-drag {
+/*
+ * Safari paints native Aqua chrome on <button>/<input type=range|checkbox> inside the closed
+ * shadow root unless appearance is cleared. :host { all: initial } does not reset form controls.
+ * Scope every control under .menu.gen and set -webkit-appearance: none.
+ */
+.menu.gen button,
+.menu.gen input {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.menu.gen .gen-drag {
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
 }
-.gen[data-dragging="true"] .gen-drag {
+.menu.gen[data-dragging="true"] .gen-drag {
   cursor: grabbing;
 }
-.gen[data-dragging="true"] {
-  /* Keep the card steady under the pointer while moving (no pop animation fighting left/top). */
+.menu.gen[data-dragging="true"] {
   transition: none;
   animation: none;
 }
 
-.gen {
-  padding-bottom: 10px;
-}
-.gen .group {
-  padding-top: 4px;
-}
-.gen-output {
-  margin: 2px 4px 0;
+.menu.gen {
+  width: 360px;
+  max-width: calc(100vw - 16px);
   padding: 8px 8px 10px;
+  box-sizing: border-box;
+}
+.menu.gen .group {
+  padding: 4px 8px 2px;
+  letter-spacing: 0.02em;
+}
+.menu.gen .gen-output {
+  margin: 4px 2px 0;
+  padding: 10px 10px 8px;
   border-radius: 14px;
-  background: var(--chip);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
   box-shadow: inset 0 0 0 0.5px var(--edge);
 }
-.gen-row {
+.menu.gen .gen-row {
   height: auto;
-  min-height: 44px;
-  padding: 4px 2px 4px 6px;
+  min-height: 40px;
+  padding: 2px 0;
   align-items: center;
+  gap: 4px;
+  background: transparent;
+  border-radius: 0;
+}
+.menu.gen .gen-row:hover,
+.menu.gen .gen-row[data-active="true"] {
   background: transparent;
 }
-.gen-row:hover,
-.gen-row[data-active="true"] {
-  background: transparent;
-}
-.gen-row[aria-disabled="true"] {
+.menu.gen .gen-row[aria-disabled="true"] {
   cursor: default;
 }
-.gen-value {
+.menu.gen .gen-value {
   font: 500 13px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.01em;
   word-break: break-all;
   white-space: normal;
+  color: var(--ink);
 }
-.gen-value[data-loading="true"] {
+.menu.gen .gen-value[data-loading="true"] {
   font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: color-mix(in srgb, var(--ink) 50%, transparent);
 }
-/* Digits and symbols in their own colours, so similar characters read apart. Colour is the only signal used here. */
-.gen-value [data-c="digit"] {
+.menu.gen .gen-value [data-c="digit"] {
   color: #0a7aff;
 }
-.gen-value [data-c="symbol"] {
+.menu.gen .gen-value [data-c="symbol"] {
   color: #d6336c;
 }
 @media (prefers-color-scheme: dark) {
-  .gen-value [data-c="digit"] {
+  .menu.gen .gen-value [data-c="digit"] {
     color: #4da3ff;
   }
-  .gen-value [data-c="symbol"] {
+  .menu.gen .gen-value [data-c="symbol"] {
     color: #ff6b9a;
   }
 }
-.icon-btn {
+
+.menu.gen .icon-btn {
   flex: none;
   width: 30px;
   height: 30px;
@@ -387,65 +410,64 @@
   display: grid;
   place-items: center;
   color: color-mix(in srgb, var(--ink) 62%, transparent);
-  background: transparent;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
   cursor: pointer;
   transition: background-color 120ms ease, transform 160ms cubic-bezier(0.2, 1.2, 0.4, 1);
 }
-.icon-btn:hover {
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
+.menu.gen .icon-btn:hover {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
   color: var(--ink);
 }
-.icon-btn:active {
+.menu.gen .icon-btn:active {
   transform: scale(0.94);
 }
-.icon-btn:disabled {
+.menu.gen .icon-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
-.gen-strength {
+.menu.gen .gen-strength {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 4px 6px 0;
+  margin: 6px 0 0;
 }
-.gen-strength-bars {
+.menu.gen .gen-strength-bars {
   display: flex;
   gap: 3px;
   width: 120px;
 }
-.gen-strength-bars span {
+.menu.gen .gen-strength-bars span {
   flex: 1;
   height: 4px;
   border-radius: 99px;
   background: color-mix(in srgb, var(--ink) 14%, transparent);
 }
-.gen-strength-bars span[data-on="true"] {
+.menu.gen .gen-strength-bars span[data-on="true"] {
   background: #34c759;
 }
-.gen-strength-bars[data-level="1"] span[data-on="true"] {
+.menu.gen .gen-strength-bars[data-level="1"] span[data-on="true"] {
   background: #ff3b30;
 }
-.gen-strength-bars[data-level="2"] span[data-on="true"] {
+.menu.gen .gen-strength-bars[data-level="2"] span[data-on="true"] {
   background: #ff9500;
 }
-.gen-strength-label {
+.menu.gen .gen-strength-label {
   font: 500 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
-/* Password / passphrase: a quiet two-way switch under the title. */
-.gen-kinds {
+.menu.gen .gen-kinds {
   display: flex;
   gap: 2px;
-  margin: 6px 8px 8px;
+  margin: 8px 2px;
   padding: 2px;
   border-radius: 9px;
   background: var(--chip);
 }
-.gen-kinds button {
+.menu.gen .gen-kinds button {
   flex: 1;
-  height: 24px;
+  height: 26px;
   border: 0;
   border-radius: 7px;
   font: 500 12px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -453,44 +475,85 @@
   background: transparent;
   cursor: pointer;
 }
-.gen-kinds button[data-on="true"] {
+.menu.gen .gen-kinds button[data-on="true"] {
   color: var(--ink);
   background: var(--seg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 0.5px var(--edge);
 }
 
-.gen-options {
+.menu.gen .gen-options {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 10px 10px 4px;
+  gap: 12px;
+  margin: 4px 4px 0;
+  padding: 2px 2px 0;
 }
-.gen-opt-label {
+.menu.gen .gen-opt-label {
   display: block;
   font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
-  margin-bottom: 6px;
+  margin: 0 0 6px;
 }
-.gen-opt-row {
+.menu.gen .gen-opt-stack {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.menu.gen .gen-opt-row {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
-.gen-opt-row > .gen-opt-label {
+.menu.gen .gen-opt-row > .gen-opt-label {
   margin: 0;
-  min-width: 58px;
+  min-width: 64px;
+  flex: none;
 }
-.gen-opt-block .gen-opt-label {
-  margin-bottom: 6px;
-}
-.gen-slider {
-  flex: 1;
+
+/* Custom range — Safari's native track is a bright white slab in dark mode. */
+.menu.gen .gen-slider {
+  flex: 1 1 auto;
   min-width: 0;
-  accent-color: #0f74b3;
+  width: 100%;
   height: 18px;
+  background: transparent;
+  cursor: pointer;
 }
-.gen-stepper {
+.menu.gen .gen-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+.menu.gen .gen-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #80c5ef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  border: 0;
+}
+.menu.gen .gen-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+.menu.gen .gen-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #80c5ef;
+  border: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.menu.gen .gen-stepper {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 0;
   border-radius: 8px;
@@ -498,80 +561,125 @@
   box-shadow: inset 0 0 0 0.5px var(--edge);
   overflow: hidden;
   flex: none;
+  height: 28px;
 }
-.gen-stepper button {
-  width: 26px;
-  height: 26px;
+.menu.gen .gen-stepper button {
+  width: 28px;
+  height: 28px;
   border: 0;
   background: transparent;
   color: var(--ink);
   font: 600 14px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   cursor: pointer;
+  display: grid;
+  place-items: center;
 }
-.gen-stepper button:disabled {
+.menu.gen .gen-stepper button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.menu.gen .gen-stepper button:disabled {
   opacity: 0.35;
   cursor: default;
 }
-.gen-stepper span {
+.menu.gen .gen-stepper span {
   min-width: 28px;
   text-align: center;
   font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--ink);
 }
-.gen-chips {
+
+.menu.gen .gen-chips {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 6px;
 }
-.gen-chip {
+.menu.gen .gen-chip {
   height: 28px;
-  padding: 0 10px;
+  padding: 0 11px;
   border-radius: 999px;
   border: 0;
   font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
   background: transparent;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
 }
-.gen-chip[data-on="true"] {
+.menu.gen .gen-chip[data-on="true"] {
   color: #0b2a40;
   background: #80c5ef;
   box-shadow: none;
 }
-@media (prefers-color-scheme: dark) {
-  .gen-chip[data-on="true"] {
-    color: #0b2a40;
-    background: #80c5ef;
-  }
+.menu.gen .gen-chip:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
 }
-.gen-mins {
+.menu.gen .gen-chip[data-on="true"]:hover {
+  background: #96d0f3;
+}
+
+.menu.gen .gen-mins {
+  display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 16px;
+  width: 100%;
 }
-.gen-min {
-  flex: 1;
+.menu.gen .gen-min {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.gen-min[data-disabled="true"] {
+.menu.gen .gen-min[data-disabled="true"] {
   opacity: 0.45;
   pointer-events: none;
 }
-.gen-switch {
+
+/* App-like trailing switch (no native checkbox chrome). */
+.menu.gen .gen-switch {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: var(--ink);
   cursor: pointer;
+  min-height: 28px;
 }
-.gen-switch input {
-  accent-color: #0f74b3;
-  width: 16px;
-  height: 16px;
-  margin: 0;
+.menu.gen .gen-toggle {
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 140ms ease;
 }
-.gen-sep {
+.menu.gen .gen-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 140ms ease;
+}
+.menu.gen .gen-toggle[data-on="true"] {
+  background: #0f74b3;
+}
+.menu.gen .gen-toggle[data-on="true"]::after {
+  transform: translateX(16px);
+}
+
+.menu.gen .gen-sep {
   width: 56px;
   height: 28px;
   border: 0;
@@ -581,26 +689,32 @@
   color: var(--ink);
   background: var(--chip);
   box-shadow: inset 0 0 0 0.5px var(--edge);
+  padding: 0 8px;
 }
-.gen-use {
-  display: block;
-  width: calc(100% - 20px);
-  margin: 10px 10px 2px;
-  height: 34px;
+
+.menu.gen .gen-use {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 8px);
+  margin: 12px 4px 2px;
+  height: 36px;
   border: 0;
   border-radius: 999px;
   font: 600 13px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   color: #fff;
   background: #0f74b3;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 116, 179, 0.35);
 }
-.gen-use:disabled {
+.menu.gen .gen-use:disabled {
   opacity: 0.45;
   cursor: default;
+  box-shadow: none;
 }
-.gen-use:not(:disabled):hover {
-  filter: brightness(1.06);
+.menu.gen .gen-use:not(:disabled):hover {
+  filter: brightness(1.08);
 }
-.gen-use:not(:disabled):active {
+.menu.gen .gen-use:not(:disabled):active {
   transform: scale(0.98);
 }

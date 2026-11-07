@@ -572,7 +572,7 @@ export default function GenerateOverlay() {
                     role="button"
                     data-active="true"
                     aria-disabled={!m().value}
-                    title={m().target.confirm ? 'Fill password and confirmation' : 'Fill password'}
+                    aria-label={m().target.confirm ? 'Fill password and confirmation' : 'Fill password'}
                     on:click={() => use(m())}
                   >
                     <span class="text">
@@ -620,27 +620,29 @@ export default function GenerateOverlay() {
 
                 <Show when={m().kind === 'password'}>
                   <div class="gen-options">
-                    <div class="gen-opt-row">
+                    <div class="gen-opt-stack">
                       <span class="gen-opt-label">Length</span>
-                      <input
-                        class="gen-slider"
-                        type="range"
-                        min="5"
-                        max="128"
-                        value={password().length}
-                        aria-label="Length"
-                        on:input={(e) => patchPassword({ length: Number((e.currentTarget as HTMLInputElement).value) })}
-                        on:click={(e) => e.stopPropagation()}
-                      />
-                      <Stepper
-                        label="Length"
-                        value={password().length}
-                        min={5}
-                        max={128}
-                        onChange={(n) => patchPassword({ length: n })}
-                      />
+                      <div class="gen-opt-row">
+                        <input
+                          class="gen-slider"
+                          type="range"
+                          min="5"
+                          max="128"
+                          value={password().length}
+                          aria-label="Length"
+                          on:input={(e) => patchPassword({ length: Number((e.currentTarget as HTMLInputElement).value) })}
+                          on:click={(e) => e.stopPropagation()}
+                        />
+                        <Stepper
+                          label="Length"
+                          value={password().length}
+                          min={5}
+                          max={128}
+                          onChange={(n) => patchPassword({ length: n })}
+                        />
+                      </div>
                     </div>
-                    <div class="gen-opt-block">
+                    <div class="gen-opt-stack">
                       <span class="gen-opt-label">Include</span>
                       <div class="gen-chips">
                         <For
@@ -670,7 +672,7 @@ export default function GenerateOverlay() {
                         </For>
                       </div>
                     </div>
-                    <div class="gen-opt-row gen-mins">
+                    <div class="gen-mins">
                       <div class="gen-min" data-disabled={!password().digits}>
                         <span class="gen-opt-label">Min numbers</span>
                         <Stepper
@@ -692,41 +694,47 @@ export default function GenerateOverlay() {
                         />
                       </div>
                     </div>
-                    <label class="gen-switch">
+                    <div class="gen-switch">
                       <span>Avoid ambiguous</span>
-                      <input
-                        type="checkbox"
-                        checked={password().avoidAmbiguous}
-                        on:change={(e) =>
-                          patchPassword({ avoidAmbiguous: (e.currentTarget as HTMLInputElement).checked })
-                        }
-                        on:click={(e) => e.stopPropagation()}
+                      <button
+                        type="button"
+                        class="gen-toggle"
+                        role="switch"
+                        aria-checked={password().avoidAmbiguous}
+                        aria-label="Avoid ambiguous characters"
+                        data-on={password().avoidAmbiguous}
+                        on:click={(e) => {
+                          e.stopPropagation();
+                          patchPassword({ avoidAmbiguous: !password().avoidAmbiguous });
+                        }}
                       />
-                    </label>
+                    </div>
                   </div>
                 </Show>
 
                 <Show when={m().kind === 'passphrase'}>
                   <div class="gen-options">
-                    <div class="gen-opt-row">
-                      <span class="gen-opt-label">Words</span>
-                      <input
-                        class="gen-slider"
-                        type="range"
-                        min="3"
-                        max="20"
-                        value={passphrase().words}
-                        aria-label="Number of words"
-                        on:input={(e) => patchPassphrase({ words: Number((e.currentTarget as HTMLInputElement).value) })}
-                        on:click={(e) => e.stopPropagation()}
-                      />
-                      <Stepper
-                        label="Number of words"
-                        value={passphrase().words}
-                        min={3}
-                        max={20}
-                        onChange={(n) => patchPassphrase({ words: n })}
-                      />
+                    <div class="gen-opt-stack">
+                      <span class="gen-opt-label">Number of words</span>
+                      <div class="gen-opt-row">
+                        <input
+                          class="gen-slider"
+                          type="range"
+                          min="3"
+                          max="20"
+                          value={passphrase().words}
+                          aria-label="Number of words"
+                          on:input={(e) => patchPassphrase({ words: Number((e.currentTarget as HTMLInputElement).value) })}
+                          on:click={(e) => e.stopPropagation()}
+                        />
+                        <Stepper
+                          label="Number of words"
+                          value={passphrase().words}
+                          min={3}
+                          max={20}
+                          onChange={(n) => patchPassphrase({ words: n })}
+                        />
+                      </div>
                     </div>
                     <div class="gen-opt-row">
                       <span class="gen-opt-label">Separator</span>
@@ -743,28 +751,36 @@ export default function GenerateOverlay() {
                         on:click={(e) => e.stopPropagation()}
                       />
                     </div>
-                    <label class="gen-switch">
+                    <div class="gen-switch">
                       <span>Capitalize</span>
-                      <input
-                        type="checkbox"
-                        checked={passphrase().capitalize}
-                        on:change={(e) =>
-                          patchPassphrase({ capitalize: (e.currentTarget as HTMLInputElement).checked })
-                        }
-                        on:click={(e) => e.stopPropagation()}
+                      <button
+                        type="button"
+                        class="gen-toggle"
+                        role="switch"
+                        aria-checked={passphrase().capitalize}
+                        aria-label="Capitalize"
+                        data-on={passphrase().capitalize}
+                        on:click={(e) => {
+                          e.stopPropagation();
+                          patchPassphrase({ capitalize: !passphrase().capitalize });
+                        }}
                       />
-                    </label>
-                    <label class="gen-switch">
+                    </div>
+                    <div class="gen-switch">
                       <span>Include number</span>
-                      <input
-                        type="checkbox"
-                        checked={passphrase().includeNumber}
-                        on:change={(e) =>
-                          patchPassphrase({ includeNumber: (e.currentTarget as HTMLInputElement).checked })
-                        }
-                        on:click={(e) => e.stopPropagation()}
+                      <button
+                        type="button"
+                        class="gen-toggle"
+                        role="switch"
+                        aria-checked={passphrase().includeNumber}
+                        aria-label="Include number"
+                        data-on={passphrase().includeNumber}
+                        on:click={(e) => {
+                          e.stopPropagation();
+                          patchPassphrase({ includeNumber: !passphrase().includeNumber });
+                        }}
                       />
-                    </label>
+                    </div>
                   </div>
                 </Show>
 
