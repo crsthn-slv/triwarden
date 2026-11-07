@@ -1,7 +1,11 @@
-// Triwarden content script: a key button in login fields (fill after Touch ID in the app) and an offer to
-// save what you typed when the form is submitted. Passwords are never stored by the extension.
+// Triwarden content script.
+// Safari: generate password/passphrase + save (system AutoFill owns vault pick/fill).
+// Chrome / Firefox / Edge: vault suggestions/fill overlay + save.
 import { render } from 'solid-js/web';
+import { pinOverlayHost } from '../../lib/overlay-layout';
+import { vaultFillInOverlay } from '../../lib/runtime';
 import { watchForSubmits } from '../../lib/save';
+import GenerateOverlay from './GenerateOverlay';
 import Overlay from './Overlay';
 import './overlay.css';
 
@@ -20,9 +24,12 @@ export default defineContentScript({
       zIndex: 2147483647,
       anchor: 'body',
       mode: 'closed',
-      onMount: (container) => render(() => <Overlay />, container),
+      onMount: (container) =>
+        render(() => (vaultFillInOverlay() ? <Overlay /> : <GenerateOverlay />), container),
       onRemove: (dispose) => dispose?.(),
     });
     ui.mount();
+    // After WXT's applyPosition: force a viewport-sized host so Safari places absolute menus on the field.
+    pinOverlayHost(ui.shadowHost, ui.uiContainer);
   },
 });
