@@ -305,11 +305,11 @@ final class CLIBridge {
                 if let words = request.length {
                     phrase.words = min(max(words, PassphraseGenerator.wordRange.lowerBound), PassphraseGenerator.wordRange.upperBound)
                 }
-                return .success(phrase.generate())
+                return .success(rememberGenerated(phrase.generate(), kind: "passphrase", for: request, model: model))
             }
             var generator = PasswordGenerator.saved
             if let length = request.length { generator.length = min(max(length, 8), 128) }
-            return .success(generator.generate())
+            return .success(rememberGenerated(generator.generate(), kind: "password", for: request, model: model))
         case .lock:
             model.lock()
             return .success("locked")
@@ -336,6 +336,16 @@ final class CLIBridge {
             guard await approve(String(localized: "read \(what) of “\(item.name)”"), peer: peer) else { return .failure(Self.denied) }
             return .success(value)
         }
+    }
+
+    /// A value generated for a web page goes into the Generator's history (with the page's site), so it isn't lost when
+    /// the page navigates before the save offer, or the offer is dismissed. `tw generate` in a terminal is not kept:
+    /// it prints the value where the person already has it.
+    private func rememberGenerated(_ value: String, kind: String, for request: CLIRequest, model: AppModel) -> String {
+        if let site = GeneratorHistory.site(fromPageURL: request.url) {
+            model.rememberGenerated(value, kind: kind, site: site)
+        }
+        return value
     }
 
     static let locked = "The vault is locked. Unlock Triwarden first."
