@@ -190,7 +190,17 @@ final class CLIBridge {
 
     private func handle(_ request: CLIRequest, peer: FramedSocketServer.Peer) async -> CLIResponse {
         guard let model else { return .failure("Triwarden is quitting.") }
-        let browserCommand = [.match, .fill, .save, .copy].contains(request.command)
+        // AutoFill handoff: never gated on Browser/CLI toggles; only our own appex may ask.
+        if request.command == .keys {
+            guard Self.isOwnBinary(peer) else { return .failure("Unknown client.") }
+            guard model.isUnlocked else { return .failure(Self.locked) }
+            let rows = model.sessions.map {
+                CLIResponse.Row(id: $0.id, name: $0.account.email, detail: $0.userKeyMaterial.base64EncodedString())
+            }
+            return .list(rows)
+        }
+
+        let browserCommand = [.match, .fill, .save, .copy, .generate].contains(request.command)
         if browserCommand { noteBrowser(request) }
         let enabled = UserDefaults.standard.bool(forKey: browserCommand ? Pref.browser : Pref.cli) || approveOverride != nil
         guard enabled else {
@@ -297,9 +307,22 @@ final class CLIBridge {
                 ? "unlocked · \(model.sessions.count) account(s) · \(model.items.filter { !$0.isDeleted && !$0.isArchived }.count) items"
                 : "locked")
         case .generate:
+            // `field: passphrase` (or query) asks for a diceware phrase; otherwise a password. Works while locked.
+            let wantsPhrase = (request.field ?? request.query)?.lowercased() == "passphrase"
+            if wantsPhrase {
+                var phrase = UserDefaults.standard.data(forKey: "passphraseGenerator")
+                    .flatMap { try? JSONDecoder().decode(PassphraseGenerator.self, from: $0) } ?? PassphraseGenerator()
+                if let words = request.length {
+                    phrase.words = min(max(words, PassphraseGenerator.wordRange.lowerBound), PassphraseGenerator.wordRange.upperBound)
+                }
+                return .success(phrase.generate())
+            }
             var generator = PasswordGenerator.saved
             if let length = request.length { generator.length = min(max(length, 8), 128) }
             return .success(generator.generate())
+        case .keys:
+            // Handled above (before the Browser/CLI gate).
+            return .failure("Unsupported request.")
         case .lock:
             model.lock()
             return .success("locked")

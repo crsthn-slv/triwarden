@@ -76,3 +76,46 @@ export function fillOtp(boxes: HTMLInputElement[], code: string): void {
   boxes.forEach((box, i) => setValue(box, code[i]));
   boxes[Math.min(code.length, boxes.length) - 1]?.focus();
 }
+
+
+const GENERATE_HINT =
+  /\b(sign\s*up|register|registration|create\s+account|new\s+account|change\s*password|reset\s*password|forgot\s*password|set\s*password|choose\s*password|confirm\s*password|re-?enter\s*password|new\s*password)\b/i;
+
+/**
+ * Password fields where Safari may show the Triwarden icon (generate password/passphrase).
+ * Ordinary login fields (`current-password`, single password on a sign-in form) stay icon-free —
+ * system AutoFill owns pick/fill there. Save/Update still runs via `watchForSubmits` without an icon.
+ */
+export function isGeneratePasswordField(pw: HTMLInputElement): boolean {
+  if (pw.type !== 'password' || !visible(pw)) return false;
+  const ac = (pw.autocomplete || '').toLowerCase();
+  if (/new-password/.test(ac)) return true;
+  if (/current-password/.test(ac)) return false;
+
+  const scope: ParentNode = pw.form || document;
+  const passwords = [...scope.querySelectorAll<HTMLInputElement>('input[type="password"]')].filter(visible);
+  // Change-password / register-with-confirm: more than one password control in the form.
+  if (passwords.length >= 2) return true;
+
+  const bits = [
+    pw.name,
+    pw.id,
+    pw.getAttribute('aria-label'),
+    pw.placeholder,
+    pw.form?.id,
+    pw.form?.name,
+    pw.form?.getAttribute('aria-label'),
+    pw.form?.action,
+  ];
+  if (pw.form) {
+    for (const label of pw.form.querySelectorAll('label, legend, h1, h2, h3, button, [type="submit"]')) {
+      bits.push(label.textContent);
+    }
+  }
+  return GENERATE_HINT.test(bits.filter(Boolean).join(' '));
+}
+
+/** Visible password fields that warrant a generate affordance (Safari). */
+export function generatePasswordFields(): HTMLInputElement[] {
+  return passwordFields().filter(isGeneratePasswordField);
+}

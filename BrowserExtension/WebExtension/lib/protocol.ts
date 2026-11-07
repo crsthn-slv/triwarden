@@ -29,18 +29,23 @@ export type Reply = {
   totp?: string;
   totpRemaining?: number;
   totpPeriod?: number;
+  /** `generate`: the fresh password or passphrase. */
+  value?: string;
 };
 
-export type Command = 'match' | 'fill' | 'save' | 'copy';
-export const COMMANDS: ReadonlySet<string> = new Set<Command>(['match', 'fill', 'save', 'copy']);
+export type Command = 'match' | 'fill' | 'save' | 'copy' | 'generate';
+export const COMMANDS: ReadonlySet<string> = new Set<Command>(['match', 'fill', 'save', 'copy', 'generate']);
 
 export type Request = {
   command: Command;
   query?: string;
   username?: string;
   password?: string;
+  /** `get` / `copy` / `generate`: for generate, `passphrase` asks for a passphrase instead of a password. */
   field?: string;
   codes?: boolean;
   /** With `codes`: the person asked to see them. A field that only took focus never sets this. */
   reveal?: boolean;
+  /** `generate` password: optional length override. */
+  length?: number;
 };

@@ -48,6 +48,9 @@ final class AccountSession {
 
     var id: String { account.id }
 
+    /// 64-byte user key (enc ‖ mac) for the AutoFill appex while this session is open.
+    var userKeyMaterial: Data { userKey.encryptionKey + userKey.macKey }
+
     init(account: SavedAccount, userKey: SymmetricKeyPair, client: VaultClient? = nil,
          makeClient: @escaping (ServerEnvironment) -> VaultClient, makeSession: @escaping () -> URLSession) {
         self.account = account
