@@ -1,6 +1,7 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { generateTargets, isRTL, setValue, visible, type GenerateTarget } from '../../lib/dom';
-import { generateMenuPlace, iconPosition } from '../../lib/overlay-layout';
+import { loadGenMenuPos, saveGenMenuPos, type GenMenuPos } from '../../lib/gen-menu-pos';
+import { applyMenuDrag, generateMenuPlace, iconPosition } from '../../lib/overlay-layout';
 import { send } from '../../lib/send';
 import { AppMark } from './AppMark';
 
@@ -33,11 +34,34 @@ export default function GenerateOverlay() {
   const [targets, setTargets] = createSignal<Target[]>([]);
   const [tick, setTick] = createSignal(0);
   const [menu, setMenu] = createSignal<Menu | null>(null);
+  /** Last absolute place on this origin (survives close + reload via extension storage). */
+  const [remembered, setRemembered] = createSignal<GenMenuPos | null>(null);
+  /** Live drag delta on top of the base place (anchor or remembered); cleared when the menu closes. */
+  const [drag, setDrag] = createSignal({ x: 0, y: 0 });
+  const [dragging, setDragging] = createSignal(false);
   let root!: HTMLDivElement;
   let asking = 0;
+  let dragSession: { startX: number; startY: number; origX: number; origY: number } | null = null;
+
+  const origin = () => location.origin;
 
   const close = () => {
     asking++;
+    // Persist the on-screen place before clearing the live drag delta.
+    const m = menu();
+    if (m) {
+      const style = menuStyle(m);
+      if (style && 'left' in style && 'top' in style && style.left && style.top) {
+        const pos = { left: Number.parseFloat(String(style.left)), top: Number.parseFloat(String(style.top)) };
+        if (Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
+          setRemembered(pos);
+          void saveGenMenuPos(origin(), pos);
+        }
+      }
+    }
+    dragSession = null;
+    setDragging(false);
+    setDrag({ x: 0, y: 0 });
     setMenu(null);
   };
 
@@ -73,9 +97,60 @@ export default function GenerateOverlay() {
     const place = menuPlace(m);
     if (!place) return { display: 'none' };
     const { left, width, vertical } = place;
-    // Always `top` + clear `bottom`: Safari/WXT shadow overlays mis-resolve CSS `bottom` on fixed.
-    return { left, width, top: vertical.top, bottom: 'auto' };
+    const mem = remembered();
+    const baseLeft = mem?.left ?? Number.parseFloat(left);
+    const baseTop = mem?.top ?? Number.parseFloat(vertical.top);
+    const d = drag();
+    const placed = applyMenuDrag(
+      baseLeft,
+      baseTop,
+      d.x,
+      d.y,
+      MENU_WIDTH,
+      MENU_HEIGHT,
+      { width: innerWidth, height: innerHeight },
+    );
+    // Always `top` + clear `bottom`: never CSS `bottom` (Safari/WXT mis-resolve it on overlay hosts).
+    return { left: placed.left, width, top: placed.top, bottom: 'auto' };
   };
+
+  function persistCurrentPlace(m: Menu) {
+    const style = menuStyle(m);
+    if (!style || !('left' in style) || !style.left || !style.top) return;
+    const pos = { left: Number.parseFloat(String(style.left)), top: Number.parseFloat(String(style.top)) };
+    if (!Number.isFinite(pos.left) || !Number.isFinite(pos.top)) return;
+    setRemembered(pos);
+    void saveGenMenuPos(origin(), pos);
+  }
+
+  /** Drag from the "Suggested password" header; place is remembered for this origin across close/reload. */
+  function onDragHandle(e: MouseEvent) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const d = drag();
+    dragSession = { startX: e.clientX, startY: e.clientY, origX: d.x, origY: d.y };
+    setDragging(true);
+    const move = (ev: MouseEvent) => {
+      if (!dragSession) return;
+      setDrag({
+        x: dragSession.origX + (ev.clientX - dragSession.startX),
+        y: dragSession.origY + (ev.clientY - dragSession.startY),
+      });
+    };
+    const up = () => {
+      const open = menu();
+      if (open) persistCurrentPlace(open);
+      // Fold the delta into remembered absolute place so the next open starts here.
+      setDrag({ x: 0, y: 0 });
+      dragSession = null;
+      setDragging(false);
+      document.removeEventListener('mousemove', move, true);
+      document.removeEventListener('mouseup', up, true);
+    };
+    document.addEventListener('mousemove', move, true);
+    document.addEventListener('mouseup', up, true);
+  }
 
   /** Ask the app for a fresh value of `kind` and show it in the open menu. */
   async function generate(target: Target, kind: Kind) {
@@ -90,6 +165,7 @@ export default function GenerateOverlay() {
 
   function toggle(target: Target) {
     if (menu()?.target.field === target.field) return close();
+    setDrag({ x: 0, y: 0 }); // keep remembered absolute place for this origin
     void generate(target, lastKind);
   }
 
@@ -104,6 +180,9 @@ export default function GenerateOverlay() {
   }
 
   onMount(() => {
+    void loadGenMenuPos(origin()).then((pos) => {
+      if (pos) setRemembered(pos);
+    });
     scan();
     let timer: number | undefined;
     const rescan = () => {
@@ -179,9 +258,16 @@ export default function GenerateOverlay() {
             style={menuStyle(m())}
             data-rtl={isRTL(m().target.field)}
             data-above={menuPlace(m())?.vertical.above ?? false}
+            data-dragging={dragging()}
             on:mousedown={(e) => e.preventDefault()}
           >
-            <div class="group">{m().kind === 'passphrase' ? 'Suggested passphrase' : 'Suggested password'}</div>
+            <div
+              class="group gen-drag"
+              title="Drag to move"
+              on:mousedown={(e) => onDragHandle(e)}
+            >
+              {m().kind === 'passphrase' ? 'Suggested passphrase' : 'Suggested password'}
+            </div>
             <Show when={!m().error} fallback={<div class="note" dir="auto">{m().error}</div>}>
               <div
                 class="row gen-row"

@@ -4,6 +4,22 @@
    ever a fill (the app icon); text and symbols stay neutral. */
 :host {
   all: initial;
+  /* Viewport layer: WXT's 0×0 relative host + all:initial !important parks fixed menus at the origin in Safari. */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  display: block !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  transform: none !important;
+  filter: none !important;
   color-scheme: light dark;
   --ink: #1d1d1f; /* not CanvasText: that follows the page's colour scheme, and the menu follows the system's */
   /* Nearly opaque: unlike the app's glass, this sits over any page, and a page's colours must not tint it. */
@@ -34,7 +50,9 @@
 
 /* ---- The app icon inside a field ---- */
 .key {
-  position: fixed;
+  /* absolute inside the viewport-pinned host (fixed was resolving against WXT's 0×0 host in Safari). */
+  position: absolute;
+  pointer-events: auto;
   width: 22px;
   height: 22px;
   border: 0;
@@ -62,7 +80,8 @@
 
 /* ---- The menu ---- */
 .menu {
-  position: fixed;
+  position: absolute;
+  pointer-events: auto;
   width: 332px; /* keep in step with MENU_WIDTH in Overlay.tsx */
   max-width: calc(100vw - 16px);
   padding: 6px;
@@ -290,6 +309,22 @@
 }
 
 /* ---- Suggested password (Safari generate menu): the value is shown at once, one click fills it ---- */
+
+/* Drag handle on the Safari generate menu: grab the title to reposition for this open session. */
+.gen .gen-drag {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.gen[data-dragging="true"] .gen-drag {
+  cursor: grabbing;
+}
+.gen[data-dragging="true"] {
+  /* Keep the card steady under the pointer while moving. */
+  transition: none;
+  animation: none;
+}
+
 .gen .group {
   padding-top: 4px;
 }

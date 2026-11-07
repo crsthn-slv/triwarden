@@ -56,8 +56,8 @@ export type MenuVertical = {
  * username and password fields, and page / shadow UI cannot cover them. Fall back to below only
  * when there is not enough room above.
  *
- * Always returns `top` (viewport px). CSS `bottom` on `position: fixed` inside WXT's shadow overlay
- * mis-resolves in Safari and parks the menu at the host's static position (viewport top-left).
+ * Always returns `top` (viewport px). CSS `bottom` mis-resolves in Safari's WXT overlay host
+ * and parks the menu at the host origin (viewport top-left).
  */
 export function menuVertical(
   box: Pick<DOMRect, 'top' | 'bottom'>,
@@ -118,4 +118,65 @@ export function generateMenuPlace(
     left: menuLeftNearIcon(iconLeft, width, rtl, viewport.width),
     vertical: menuVerticalGenerate(field, confirm, height, viewport.height, gap),
   };
+}
+
+
+/** Shift a menu by a drag offset and keep it inside the viewport. */
+export function applyMenuDrag(
+  baseLeft: number,
+  baseTop: number,
+  dx: number,
+  dy: number,
+  width: number,
+  height: number,
+  viewport: { width: number; height: number },
+): { left: string; top: string } {
+  const left = Math.max(8, Math.min(baseLeft + dx, viewport.width - width - 8));
+  const top = Math.max(8, Math.min(baseTop + dy, viewport.height - height - 8));
+  return { left: `${left}px`, top: `${top}px` };
+}
+
+/**
+ * WXT's `position: 'overlay'` sets the shadow host to `position:relative; width:0; height:0`
+ * and injects `:host { all: initial !important }`, which beats those inline styles. Safari then
+ * resolves `position: fixed` children against that 0×0 host (or a transformed page ancestor) and
+ * parks menus at the viewport origin. Pin the host (and its mount container) to the viewport so
+ * absolute/fixed children with getBoundingClientRect coordinates land on the field.
+ */
+export function pinOverlayHost(host: HTMLElement, container?: HTMLElement | null) {
+  const hostPin: Record<string, string> = {
+    position: 'fixed',
+    top: '0',
+    left: '0',
+    right: '0',
+    bottom: '0',
+    width: 'auto',
+    height: 'auto',
+    margin: '0',
+    padding: '0',
+    border: 'none',
+    overflow: 'visible',
+    display: 'block',
+    transform: 'none',
+    filter: 'none',
+    'pointer-events': 'none',
+  };
+  for (const [key, value] of Object.entries(hostPin)) {
+    host.style.setProperty(key, value, 'important');
+  }
+  if (!container) return;
+  const boxPin: Record<string, string> = {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    right: '0',
+    bottom: '0',
+    width: 'auto',
+    height: 'auto',
+    overflow: 'visible',
+    'pointer-events': 'none',
+  };
+  for (const [key, value] of Object.entries(boxPin)) {
+    container.style.setProperty(key, value, 'important');
+  }
 }

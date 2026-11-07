@@ -184,7 +184,7 @@ export default function Overlay() {
     const place = menuPlace(m);
     if (!place) return { display: 'none' };
     const { left, width, vertical } = place;
-    // Always `top` + clear `bottom`: Safari/WXT shadow overlays mis-resolve CSS `bottom` on fixed.
+    // Always `top` + clear `bottom`: never CSS `bottom` (Safari/WXT mis-resolve it on overlay hosts).
     return { left, width, top: vertical.top, bottom: 'auto' };
   };
 

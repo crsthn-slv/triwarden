@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyMenuDrag,
   generateMenuPlace,
   iconPosition,
   menuLeft,
   menuLeftNearIcon,
   menuVertical,
   menuVerticalGenerate,
+  pinOverlayHost,
   SYSTEM_AUTOFILL_ICON_CLEARANCE,
 } from './overlay-layout';
 
@@ -92,5 +94,37 @@ describe('generateMenuPlace', () => {
 
   it('menuVerticalGenerate matches generateMenuPlace vertical', () => {
     expect(menuVerticalGenerate(field, confirm, 110, 800)).toEqual({ top: '184px', above: true });
+  });
+});
+
+describe('pinOverlayHost', () => {
+  it('forces a viewport-sized host so absolute menus are not stuck at the origin', () => {
+    const host = document.createElement('div');
+    const box = document.createElement('div');
+    // Simulate WXT's overlay defaults that Safari mishandles.
+    host.style.position = 'relative';
+    host.style.width = '0';
+    host.style.height = '0';
+    pinOverlayHost(host, box);
+    expect(host.style.getPropertyValue('position')).toBe('fixed');
+    expect(host.style.getPropertyPriority('position')).toBe('important');
+    expect(host.style.getPropertyValue('pointer-events')).toBe('none');
+    expect(host.style.getPropertyValue('top')).toBe('0px');
+    expect(box.style.getPropertyValue('position')).toBe('absolute');
+    expect(box.style.getPropertyValue('pointer-events')).toBe('none');
+    expect(box.style.getPropertyPriority('top')).toBe('important');
+  });
+});
+
+describe('applyMenuDrag', () => {
+  const vp = { width: 1000, height: 800 };
+
+  it('shifts from the anchored place by the drag delta', () => {
+    expect(applyMenuDrag(100, 200, 40, -30, 300, 140, vp)).toEqual({ left: '140px', top: '170px' });
+  });
+
+  it('keeps the dragged menu inside the viewport', () => {
+    expect(applyMenuDrag(100, 200, 900, 900, 300, 140, vp)).toEqual({ left: '692px', top: '652px' });
+    expect(applyMenuDrag(100, 200, -500, -500, 300, 140, vp)).toEqual({ left: '8px', top: '8px' });
   });
 });

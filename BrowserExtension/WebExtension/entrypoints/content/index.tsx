@@ -2,6 +2,7 @@
 // Safari: generate password/passphrase + save (system AutoFill owns vault pick/fill).
 // Chrome / Firefox / Edge: vault suggestions/fill overlay + save.
 import { render } from 'solid-js/web';
+import { pinOverlayHost } from '../../lib/overlay-layout';
 import { vaultFillInOverlay } from '../../lib/runtime';
 import { watchForSubmits } from '../../lib/save';
 import GenerateOverlay from './GenerateOverlay';
@@ -28,5 +29,7 @@ export default defineContentScript({
       onRemove: (dispose) => dispose?.(),
     });
     ui.mount();
+    // After WXT's applyPosition: force a viewport-sized host so Safari places absolute menus on the field.
+    pinOverlayHost(ui.shadowHost, ui.uiContainer);
   },
 });
