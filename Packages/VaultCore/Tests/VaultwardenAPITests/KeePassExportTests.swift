@@ -111,9 +111,16 @@ enum KDBXReader {
     }
     struct Database { var root: Group; var protected: Set<String> }
 
+    /// A little-endian unsigned integer from a few bytes.
+    static func le(_ bytes: ArraySlice<UInt8>) -> Int {
+        var v = 0
+        for byte in bytes.reversed() { v = v << 8 | Int(byte) }
+        return v
+    }
+
     static func read(_ file: Data, password: String) throws -> Database {
         let b = [UInt8](file)
-        func u32(_ i: Int) -> Int { Int(b[i]) | Int(b[i + 1]) << 8 | Int(b[i + 2]) << 16 | Int(b[i + 3]) << 24 }
+        func u32(_ i: Int) -> Int { le(b[i..<(i + 4)]) }
         guard Array(b[0..<8]) == KeePassExport.signature, b[8...11] == [0, 0, 4, 0] else { throw Failure.format }
         var i = 12
         var fields: [UInt8: Data] = [:]
@@ -133,9 +140,9 @@ enum KDBXReader {
         let p = [UInt8](params)
         var j = 2
         while p[j] != 0 {
-            let kl = Int(p[j + 1]) | Int(p[j + 2]) << 8, keyEnd = j + 5 + kl
+            let kl = le(p[(j + 1)..<(j + 5)]), keyEnd = j + 5 + kl
             let key = String(decoding: p[(j + 5)..<keyEnd], as: UTF8.self)
-            let vl = Int(p[keyEnd]) | Int(p[keyEnd + 1]) << 8 | Int(p[keyEnd + 2]) << 16
+            let vl = le(p[keyEnd..<(keyEnd + 4)])
             kdf[key] = Data(p[(keyEnd + 4)..<(keyEnd + 4 + vl)])
             j = keyEnd + 4 + vl
         }
@@ -166,7 +173,7 @@ enum KDBXReader {
         var inner: [UInt8: Data] = [:]
         while true {
             let id = plain[k]
-            let len = Int(plain[k + 1]) | Int(plain[k + 2]) << 8 | Int(plain[k + 3]) << 16
+            let len = le(plain[(k + 1)..<(k + 5)])
             inner[id] = Data(plain[(k + 5)..<(k + 5 + len)])
             k += 5 + len
             if id == 0 { break }

@@ -10,11 +10,22 @@ public struct ChaCha20 {
     /// A 32-byte key and a 12-byte nonce; `counter` is the first block's number.
     public init(key: Data, nonce: Data, counter: UInt32 = 0) {
         precondition(key.count == 32 && nonce.count == 12, "ChaCha20 needs a 32-byte key and a 12-byte nonce")
+        // Little-endian 32-bit words, built step by step: one long shift-or chain is too slow to type-check
+        // on older compilers.
         func words(_ d: Data) -> [UInt32] {
             let b = [UInt8](d)
-            return stride(from: 0, to: b.count, by: 4).map {
-                UInt32(b[$0]) | UInt32(b[$0 + 1]) << 8 | UInt32(b[$0 + 2]) << 16 | UInt32(b[$0 + 3]) << 24
+            var out: [UInt32] = []
+            out.reserveCapacity(b.count / 4)
+            var i = 0
+            while i < b.count {
+                var w = UInt32(b[i])
+                w |= UInt32(b[i + 1]) << 8
+                w |= UInt32(b[i + 2]) << 16
+                w |= UInt32(b[i + 3]) << 24
+                out.append(w)
+                i += 4
             }
+            return out
         }
         state = [0x6170_7865, 0x3320_646E, 0x7962_2D32, 0x6B20_6574] + words(key) + [counter] + words(nonce)
     }
