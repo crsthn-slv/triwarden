@@ -115,14 +115,29 @@ describe('GenerateOverlay', () => {
     await tick(5);
     // First call loads saved prefs (no overrides); reply seeds local state.
     expect(vi.mocked(send).mock.calls[0]![0]).toEqual({ command: 'generate', field: undefined });
+    const before = vi.mocked(send).mock.calls.length;
     const plus = host.querySelector<HTMLButtonElement>('.gen-stepper button[aria-label="Increase Length"]')!;
     plus.click();
+    plus.click(); // coalesce: two quick steps → one debounced generate
     await tick(5);
+    expect(vi.mocked(send).mock.calls.length).toBe(before); // still within debounce window
+    await tick(200);
     const last = vi.mocked(send).mock.calls.at(-1)![0] as Record<string, unknown>;
     expect(last.command).toBe('generate');
-    expect(last.length).toBe(21);
+    expect(last.length).toBe(22);
     expect(last.uppercase).toBe(true);
     expect(last.digits).toBe(true);
+  });
+
+  it('keeps the previous suggestion visible while options regenerate (no Generating flash)', async () => {
+    const host = await mount();
+    host.querySelector<HTMLButtonElement>('.key')!.click();
+    await tick(5);
+    expect(host.querySelector('.gen-value')!.textContent).toBe('Gen3rated!Pw');
+    host.querySelectorAll<HTMLButtonElement>('.gen-chip')[0]!.click();
+    await tick(5); // still debouncing / soft — value must not blank
+    expect(host.querySelector('.gen-value')!.textContent).toBe('Gen3rated!Pw');
+    expect(host.querySelector('.gen-value')!.getAttribute('data-loading')).not.toBe('true');
   });
 
   it('keeps X and Y after drag ends (absolute place, not a cleared delta)', async () => {

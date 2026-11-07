@@ -141,12 +141,14 @@ export default function GenerateOverlay() {
   const [seededPassword, setSeededPassword] = createSignal(false);
   const [seededPassphrase, setSeededPassphrase] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
+  const [updating, setUpdating] = createSignal(false);
   let root!: HTMLDivElement;
   let menuEl: HTMLDivElement | undefined;
   let asking = 0;
   let dragSession: { pointerId: number; startX: number; startY: number; origLeft: number; origTop: number } | null =
     null;
   let copyTimer: number | undefined;
+  let regenTimer: number | undefined;
 
   const origin = () => location.origin;
 
@@ -193,6 +195,7 @@ export default function GenerateOverlay() {
 
   const close = () => {
     asking++;
+    clearTimeout(regenTimer);
     const pos = menuPos();
     if (pos) persistPos(pos);
     dragSession = null;
@@ -355,8 +358,11 @@ export default function GenerateOverlay() {
     return request;
   }
 
-  /** Ask the app for a fresh value of `kind` and show it in the open menu. */
-  async function generate(target: Target, kind: Kind) {
+  /**
+   * Ask the app for a fresh value. `soft` keeps the previous suggestion visible while a new one loads
+   * (option tweaks / regenerate) so the dialog does not flash empty "Generating…".
+   */
+  async function generate(target: Target, kind: Kind, opts: { soft?: boolean } = {}) {
     const mine = ++asking;
     lastKind = kind;
     // Keep menuPos when regenerating / switching kind so the card does not jump.
@@ -364,29 +370,54 @@ export default function GenerateOverlay() {
       const seed = remembered() ?? anchorPlace({ target, kind });
       if (seed) setMenuPos(seed);
     }
-    setMenu({ target, kind });
-    setCopied(false);
-    const reply = await send(buildGenerateRequest(kind));
-    if (mine !== asking) return;
-    if (!reply.ok || !reply.value) {
-      return setMenu({ target, kind, error: reply.error || "Triwarden isn't available." });
+    const prev = menu();
+    const keep =
+      !!opts.soft &&
+      !!prev &&
+      prev.target.field === target.field &&
+      prev.kind === kind &&
+      !!prev.value &&
+      !prev.error;
+    setMenu({
+      target,
+      kind,
+      value: keep ? prev!.value : undefined,
+      entropyBits: keep ? prev!.entropyBits : undefined,
+    });
+    if (!keep) setCopied(false);
+    if (keep) setUpdating(true);
+    try {
+      const reply = await send(buildGenerateRequest(kind));
+      if (mine !== asking) return;
+      if (!reply.ok || !reply.value) {
+        return setMenu({ target, kind, error: reply.error || "Triwarden isn't available." });
+      }
+      applyReplyOptions(kind, reply);
+      setMenu({ target, kind, value: reply.value, entropyBits: reply.entropyBits });
+    } finally {
+      if (mine === asking) setUpdating(false);
     }
-    applyReplyOptions(kind, reply);
-    setMenu({ target, kind, value: reply.value, entropyBits: reply.entropyBits });
+  }
+
+  /** Coalesce rapid option changes (esp. range drag) into one soft regenerate. */
+  function scheduleRegen(kind: Kind) {
+    clearTimeout(regenTimer);
+    regenTimer = window.setTimeout(() => {
+      const open = menu();
+      if (open) void generate(open.target, kind, { soft: true });
+    }, 160);
   }
 
   function patchPassword(patch: Partial<PasswordOpts>) {
     setPassword((p) => ({ ...p, ...patch }));
     setSeededPassword(true);
-    const open = menu();
-    if (open) void generate(open.target, 'password');
+    scheduleRegen('password');
   }
 
   function patchPassphrase(patch: Partial<PassphraseOpts>) {
     setPassphrase((p) => ({ ...p, ...patch }));
     setSeededPassphrase(true);
-    const open = menu();
-    if (open) void generate(open.target, 'passphrase');
+    scheduleRegen('passphrase');
   }
 
   function toggle(target: Target) {
@@ -464,6 +495,7 @@ export default function GenerateOverlay() {
     onCleanup(() => {
       clearTimeout(timer);
       clearTimeout(copyTimer);
+      clearTimeout(regenTimer);
       observer.disconnect();
       removeEventListener('scroll', move, true);
       removeEventListener('resize', move);
@@ -543,7 +575,13 @@ export default function GenerateOverlay() {
               data-rtl={isRTL(m().target.field)}
               data-above={menuAbove(m())}
               data-dragging={dragging()}
-              on:mousedown={(e) => e.preventDefault()}
+              on:mousedown={(e) => {
+                // Keep focus on the password field when clicking chrome, but do not block
+                // native range-thumb drag or caret in inputs (Safari needs mousedown).
+                const el = e.target as HTMLElement | null;
+                if (el?.closest('input, textarea, select, [data-allow-mouse]')) return;
+                e.preventDefault();
+              }}
             >
               <div class="group gen-drag" title="Drag to move" on:pointerdown={(e) => onDragHandle(e)}>
                 {m().kind === 'passphrase' ? 'Suggested passphrase' : 'Suggested password'}
@@ -576,7 +614,7 @@ export default function GenerateOverlay() {
                     on:click={() => use(m())}
                   >
                     <span class="text">
-                      <span class="gen-value" data-loading={!m().value}>
+                      <span class="gen-value" data-loading={!m().value} data-updating={updating()}>
                         <Show when={m().value} fallback="Generating…">
                           {(v) => <Pretty value={v()} />}
                         </Show>
@@ -589,7 +627,7 @@ export default function GenerateOverlay() {
                       aria-label="Generate another"
                       on:click={(e) => {
                         e.stopPropagation();
-                        void generate(m().target, m().kind);
+                        void generate(m().target, m().kind, { soft: true });
                       }}
                     >
                       {refreshIcon}
@@ -630,6 +668,9 @@ export default function GenerateOverlay() {
                           max="128"
                           value={password().length}
                           aria-label="Length"
+                          style={{ '--pct': `${((password().length - 5) / (128 - 5)) * 100}%` }}
+                          on:pointerdown={(e) => e.stopPropagation()}
+                          on:mousedown={(e) => e.stopPropagation()}
                           on:input={(e) => patchPassword({ length: Number((e.currentTarget as HTMLInputElement).value) })}
                           on:click={(e) => e.stopPropagation()}
                         />
@@ -724,6 +765,9 @@ export default function GenerateOverlay() {
                           max="20"
                           value={passphrase().words}
                           aria-label="Number of words"
+                          style={{ '--pct': `${((passphrase().words - 3) / (20 - 3)) * 100}%` }}
+                          on:pointerdown={(e) => e.stopPropagation()}
+                          on:mousedown={(e) => e.stopPropagation()}
                           on:input={(e) => patchPassphrase({ words: Number((e.currentTarget as HTMLInputElement).value) })}
                           on:click={(e) => e.stopPropagation()}
                         />
