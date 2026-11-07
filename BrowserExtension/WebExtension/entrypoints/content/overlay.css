@@ -310,17 +310,18 @@
 
 /* ---- Suggested password (Safari generate menu): the value is shown at once, one click fills it ---- */
 
-/* Drag handle on the Safari generate menu: grab the title to reposition for this open session. */
+/* Drag handle on the Safari generate menu: grab the title; place sticks on pointer-up (X and Y). */
 .gen .gen-drag {
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: none;
 }
 .gen[data-dragging="true"] .gen-drag {
   cursor: grabbing;
 }
 .gen[data-dragging="true"] {
-  /* Keep the card steady under the pointer while moving. */
+  /* Keep the card steady under the pointer while moving (no pop animation fighting left/top). */
   transition: none;
   animation: none;
 }

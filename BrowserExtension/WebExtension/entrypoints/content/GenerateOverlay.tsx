@@ -36,32 +36,66 @@ export default function GenerateOverlay() {
   const [menu, setMenu] = createSignal<Menu | null>(null);
   /** Last absolute place on this origin (survives close + reload via extension storage). */
   const [remembered, setRemembered] = createSignal<GenMenuPos | null>(null);
-  /** Live drag delta on top of the base place (anchor or remembered); cleared when the menu closes. */
-  const [drag, setDrag] = createSignal({ x: 0, y: 0 });
+  /**
+   * Live absolute viewport place while the menu is open. Source of truth for left+top — not a drag
+   * delta that gets cleared on pointer-up (that snapped the card back and made X feel stuck).
+   */
+  const [menuPos, setMenuPos] = createSignal<GenMenuPos | null>(null);
   const [dragging, setDragging] = createSignal(false);
   let root!: HTMLDivElement;
+  let menuEl: HTMLDivElement | undefined;
   let asking = 0;
-  let dragSession: { startX: number; startY: number; origX: number; origY: number } | null = null;
+  let dragSession: { pointerId: number; startX: number; startY: number; origLeft: number; origTop: number } | null =
+    null;
 
   const origin = () => location.origin;
 
+  /** Anchor under the field icon (or confirm), ignoring any remembered / dragged place. */
+  function anchorPlace(m: Menu): GenMenuPos | null {
+    tick();
+    const f = m.target.field;
+    if (!f.isConnected) return null;
+    const c = m.target.confirm;
+    const confirm = c?.isConnected && visible(c) ? c.getBoundingClientRect() : null;
+    const { left, vertical } = generateMenuPlace(
+      f.getBoundingClientRect(),
+      confirm,
+      MENU_WIDTH,
+      MENU_HEIGHT,
+      { width: innerWidth, height: innerHeight },
+      isRTL(f),
+    );
+    return { left: Number.parseFloat(left), top: Number.parseFloat(vertical.top) };
+  }
+
+  const menuAbove = (m: Menu) => {
+    tick();
+    const f = m.target.field;
+    if (!f.isConnected) return false;
+    const c = m.target.confirm;
+    const confirm = c?.isConnected && visible(c) ? c.getBoundingClientRect() : null;
+    return generateMenuPlace(
+      f.getBoundingClientRect(),
+      confirm,
+      MENU_WIDTH,
+      MENU_HEIGHT,
+      { width: innerWidth, height: innerHeight },
+      isRTL(f),
+    ).vertical.above;
+  };
+
+  function persistPos(pos: GenMenuPos) {
+    setRemembered(pos);
+    void saveGenMenuPos(origin(), pos);
+  }
+
   const close = () => {
     asking++;
-    // Persist the on-screen place before clearing the live drag delta.
-    const m = menu();
-    if (m) {
-      const style = menuStyle(m);
-      if (style && 'left' in style && 'top' in style && style.left && style.top) {
-        const pos = { left: Number.parseFloat(String(style.left)), top: Number.parseFloat(String(style.top)) };
-        if (Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
-          setRemembered(pos);
-          void saveGenMenuPos(origin(), pos);
-        }
-      }
-    }
+    const pos = menuPos();
+    if (pos) persistPos(pos);
     dragSession = null;
     setDragging(false);
-    setDrag({ x: 0, y: 0 });
+    setMenuPos(null);
     setMenu(null);
   };
 
@@ -76,86 +110,108 @@ export default function GenerateOverlay() {
     return iconPosition(t.field.getBoundingClientRect(), isRTL(t.field), false);
   };
 
-  const menuPlace = (m: Menu) => {
-    tick();
-    const f = m.target.field;
-    if (!f.isConnected) return null;
-    const c = m.target.confirm;
-    const confirm = c?.isConnected && visible(c) ? c.getBoundingClientRect() : null;
-    const { left, vertical } = generateMenuPlace(
-      f.getBoundingClientRect(),
-      confirm,
-      MENU_WIDTH,
-      MENU_HEIGHT,
-      { width: innerWidth, height: innerHeight },
-      isRTL(f),
-    );
-    return { left, width: `${MENU_WIDTH}px`, vertical };
-  };
-
+  /** Fixed viewport place from menuPos (drag commits here); fall back to anchor only if unset. */
   const menuStyle = (m: Menu) => {
-    const place = menuPlace(m);
-    if (!place) return { display: 'none' };
-    const { left, width, vertical } = place;
-    const mem = remembered();
-    const baseLeft = mem?.left ?? Number.parseFloat(left);
-    const baseTop = mem?.top ?? Number.parseFloat(vertical.top);
-    const d = drag();
-    const placed = applyMenuDrag(
-      baseLeft,
-      baseTop,
-      d.x,
-      d.y,
-      MENU_WIDTH,
-      MENU_HEIGHT,
-      { width: innerWidth, height: innerHeight },
-    );
-    // Always `top` + clear `bottom`: never CSS `bottom` (Safari/WXT mis-resolve it on overlay hosts).
-    return { left: placed.left, width, top: placed.top, bottom: 'auto' };
+    let pos = menuPos() ?? anchorPlace(m);
+    if (!pos || !Number.isFinite(pos.left) || !Number.isFinite(pos.top)) {
+      // Last resort so a transient NaN/anchor miss does not hide an open menu (and break drag).
+      pos = { left: 8, top: 8 };
+    }
+    // `fixed` + clear right/bottom: same viewport coords as getBoundingClientRect; avoids the
+    // absolute-in-0×0-host Safari trap that parked only the X edge wrong under WXT.
+    return {
+      position: 'fixed',
+      left: `${pos.left}px`,
+      top: `${pos.top}px`,
+      width: `${MENU_WIDTH}px`,
+      right: 'auto',
+      bottom: 'auto',
+    };
   };
 
-  function persistCurrentPlace(m: Menu) {
-    const style = menuStyle(m);
-    if (!style || !('left' in style) || !style.left || !style.top) return;
-    const pos = { left: Number.parseFloat(String(style.left)), top: Number.parseFloat(String(style.top)) };
-    if (!Number.isFinite(pos.left) || !Number.isFinite(pos.top)) return;
-    setRemembered(pos);
-    void saveGenMenuPos(origin(), pos);
+  /** Read the card's on-screen left/top, even if menuPos was never seeded (jsdom / Safari edge). */
+  function visualPlace(open: Menu): GenMenuPos {
+    const seeded = menuPos();
+    if (seeded && Number.isFinite(seeded.left) && Number.isFinite(seeded.top)) return seeded;
+    const anchored = anchorPlace(open);
+    if (anchored && Number.isFinite(anchored.left) && Number.isFinite(anchored.top)) return anchored;
+    if (menuEl) {
+      const left = Number.parseFloat(menuEl.style.left);
+      const top = Number.parseFloat(menuEl.style.top);
+      if (Number.isFinite(left) && Number.isFinite(top)) return { left, top };
+    }
+    return { left: 8, top: 8 };
   }
 
   /** Drag from the "Suggested password" header; place is remembered for this origin across close/reload. */
-  function onDragHandle(e: MouseEvent) {
+  function onDragHandle(e: PointerEvent) {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    const d = drag();
-    dragSession = { startX: e.clientX, startY: e.clientY, origX: d.x, origY: d.y };
-    setDragging(true);
-    const move = (ev: MouseEvent) => {
-      if (!dragSession) return;
-      setDrag({
-        x: dragSession.origX + (ev.clientX - dragSession.startX),
-        y: dragSession.origY + (ev.clientY - dragSession.startY),
-      });
+    const open = menu();
+    if (!open) return;
+    const current = visualPlace(open);
+    // Ensure we are driving an absolute place before the first move (not a zeroed delta).
+    setMenuPos(current);
+    dragSession = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      origLeft: current.left,
+      origTop: current.top,
     };
-    const up = () => {
-      const open = menu();
-      if (open) persistCurrentPlace(open);
-      // Fold the delta into remembered absolute place so the next open starts here.
-      setDrag({ x: 0, y: 0 });
+    setDragging(true);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // setPointerCapture can throw if the pointer is already gone
+    }
+
+    const move = (ev: PointerEvent) => {
+      if (!dragSession || ev.pointerId !== dragSession.pointerId) return;
+      const next = applyMenuDrag(
+        dragSession.origLeft,
+        dragSession.origTop,
+        ev.clientX - dragSession.startX,
+        ev.clientY - dragSession.startY,
+        MENU_WIDTH,
+        MENU_HEIGHT,
+        { width: innerWidth, height: innerHeight },
+      );
+      const abs = { left: Number.parseFloat(next.left), top: Number.parseFloat(next.top) };
+      setMenuPos(abs);
+      // Write the node directly so a mid-drag Solid re-render cannot flash the pre-drag place.
+      if (menuEl) {
+        menuEl.style.left = next.left;
+        menuEl.style.top = next.top;
+      }
+    };
+
+    const up = (ev: PointerEvent) => {
+      if (dragSession && ev.pointerId !== dragSession.pointerId) return;
+      const pos = menuPos();
+      if (pos) persistPos(pos);
       dragSession = null;
       setDragging(false);
-      document.removeEventListener('mousemove', move, true);
-      document.removeEventListener('mouseup', up, true);
+      document.removeEventListener('pointermove', move, true);
+      document.removeEventListener('pointerup', up, true);
+      document.removeEventListener('pointercancel', up, true);
     };
-    document.addEventListener('mousemove', move, true);
-    document.addEventListener('mouseup', up, true);
+
+    document.addEventListener('pointermove', move, true);
+    document.addEventListener('pointerup', up, true);
+    document.addEventListener('pointercancel', up, true);
   }
 
   /** Ask the app for a fresh value of `kind` and show it in the open menu. */
   async function generate(target: Target, kind: Kind) {
     const mine = ++asking;
     lastKind = kind;
+    // Keep menuPos when regenerating / switching kind so the card does not jump.
+    if (!menuPos()) {
+      const seed = remembered() ?? anchorPlace({ target, kind });
+      if (seed) setMenuPos(seed);
+    }
     setMenu({ target, kind });
     const reply = await send({ command: 'generate', field: kind === 'passphrase' ? 'passphrase' : undefined });
     if (mine !== asking) return;
@@ -165,7 +221,8 @@ export default function GenerateOverlay() {
 
   function toggle(target: Target) {
     if (menu()?.target.field === target.field) return close();
-    setDrag({ x: 0, y: 0 }); // keep remembered absolute place for this origin
+    const seed = remembered() ?? null;
+    setMenuPos(seed); // null → generate() fills from the field anchor
     void generate(target, lastKind);
   }
 
@@ -198,6 +255,7 @@ export default function GenerateOverlay() {
       attributeFilter: ['type', 'style', 'class', 'autocomplete', 'hidden', 'disabled'],
     });
     const outside = (e: MouseEvent) => {
+      if (dragging() || dragSession) return; // don't close while dragging
       const host = (root.getRootNode() as ShadowRoot).host;
       if (menu() && !e.composedPath().includes(host)) close();
     };
@@ -252,19 +310,22 @@ export default function GenerateOverlay() {
       <Show when={menu()}>
         {(m) => (
           <div
+            ref={(el) => {
+              menuEl = el;
+            }}
             class="menu gen"
             role="dialog"
             aria-label="Suggested password"
             style={menuStyle(m())}
             data-rtl={isRTL(m().target.field)}
-            data-above={menuPlace(m())?.vertical.above ?? false}
+            data-above={menuAbove(m())}
             data-dragging={dragging()}
             on:mousedown={(e) => e.preventDefault()}
           >
             <div
               class="group gen-drag"
               title="Drag to move"
-              on:mousedown={(e) => onDragHandle(e)}
+              on:pointerdown={(e) => onDragHandle(e)}
             >
               {m().kind === 'passphrase' ? 'Suggested passphrase' : 'Suggested password'}
             </div>
