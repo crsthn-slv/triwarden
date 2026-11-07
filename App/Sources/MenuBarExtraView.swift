@@ -43,6 +43,8 @@ struct MenuBarContent: View {
                 } else {
                     // Locked: unlock in the panel (account + password / PIN / Touch ID). Don't force the main window.
                     LockedCard()
+                    // Making a new password never needs the vault: signing up somewhere shouldn't wait on an unlock.
+                    GeneratorCard()
                 }
             }
             .transition(.blurReplace)
@@ -560,44 +562,78 @@ private struct QuickActions: View {
     }
 }
 
-/// A fresh password or passphrase: switch the kind, regenerate, copy.
+/// A fresh password or passphrase: switch the kind, regenerate, copy. Works while the vault is locked (nothing here
+/// touches the vault). The dice opens the same generator popover as a password field, with every option; both share
+/// the saved settings and the Password / Passphrase choice, so what you tune there is what this card makes.
 private struct GeneratorCard: View {
-    enum Kind: Hashable { case password, passphrase }
     @Environment(AppModel.self) private var model
-    @AppStorage("menuBarGeneratorKind") private var passphrase = false
-    @State private var value = PasswordGenerator.saved.generate()
+    @AppStorage("generatorMode") private var storedMode = GeneratorView.Mode.password.rawValue
+    @AppStorage("generator") private var storedPassword = Data()
+    @AppStorage("passphraseGenerator") private var storedPassphrase = Data()
+    @State private var value = ""
+    @State private var showGenerator = false
+
+    private var passphrase: Bool { storedMode == GeneratorView.Mode.passphrase.rawValue }
+    private var password: PasswordGenerator {
+        (try? JSONDecoder().decode(PasswordGenerator.self, from: storedPassword)) ?? PasswordGenerator()
+    }
+    private var phrase: PassphraseGenerator {
+        (try? JSONDecoder().decode(PassphraseGenerator.self, from: storedPassphrase)) ?? PassphraseGenerator()
+    }
 
     var body: some View {
         PanelCard(padding: 12) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack {
+                HStack(spacing: 8) {
                     Text("Generator").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                     Spacer()
-                    AppSegmented(options: [(false, LocalizedStringKey("Password")), (true, "Passphrase")], selection: $passphrase)
-                        .frame(width: 200)
+                    AppSegmented(options: [(false, LocalizedStringKey("Password")), (true, "Passphrase")],
+                                 selection: Binding(get: { passphrase },
+                                                    set: { storedMode = ($0 ? GeneratorView.Mode.passphrase : .password).rawValue }))
+                        .frame(width: 190)
                         .controlSize(.small)
+                    Button { showGenerator = true } label: {
+                        Image(systemName: "dice").font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(showGenerator ? Color.primary : .secondary)
+                            .frame(width: 26, height: 26)
+                            .background(Color.primary.opacity(showGenerator ? 0.12 : 0.06), in: .circle)
+                            .contentShape(.circle)
+                    }
+                    .buttonStyle(.plain)
+                    .help(Text("Generator options: length, characters and more"))
+                    .accessibilityLabel(Text("Generator options"))
+                    .popover(isPresented: $showGenerator, arrowEdge: .trailing) {
+                        GeneratorView(modes: [.password, .passphrase], compact: true) { generated in
+                            withAnimation(.snappy) { value = generated }
+                            showGenerator = false
+                        }
+                    }
                 }
                 HStack(spacing: 6) {
-                    Text(verbatim: value)
+                    ColoredSecret(value: value, separator: passphrase ? phrase.separator : nil)
                         .font(.system(size: 13, design: .monospaced))
                         .lineLimit(1).truncationMode(.middle)
                         .textSelection(.enabled)
                         .contentTransition(.opacity)
+                        .accessibilityLabel(Text(verbatim: value))
                     Spacer(minLength: 4)
                     CopyIcon(symbol: "arrow.clockwise", help: "Regenerate password") { regenerate() }
-                    CopyIcon(symbol: "doc.on.doc", help: "Copy generated password") {
-                        model.copy(value, label: String(localized: "Password"))
+                    CopyIcon(symbol: "doc.on.doc", help: passphrase ? "Copy generated passphrase" : "Copy generated password") {
+                        model.copy(value, label: passphrase ? String(localized: "Passphrase") : String(localized: "Password"))
                     }
                 }
-                StrengthMeter(password: value)
+                StrengthMeter(bits: passphrase ? phrase.entropyBits : password.entropyBits)
             }
         }
-        .onChange(of: passphrase) { regenerate() }
-        .onAppear { regenerate() }
+        .onAppear(perform: regenerate)
+        .onChange(of: storedMode) { regenerate() }
+        // Options changed in the popover (or the Generator page): follow them.
+        .onChange(of: storedPassword) { if !passphrase { regenerate() } }
+        .onChange(of: storedPassphrase) { if passphrase { regenerate() } }
     }
 
     private func regenerate() {
-        withAnimation(.snappy) { value = passphrase ? PassphraseGenerator().generate() : PasswordGenerator.saved.generate() }
+        withAnimation(.snappy) { value = passphrase ? phrase.generate() : password.generate() }
     }
 }
 
@@ -611,10 +647,10 @@ private struct SSHRow: View {
         if agent.isRunning || keys > 0 {
             PanelCard(padding: 12) {
                 HStack(spacing: 10) {
+                        // Plain glyph, no tile: the panel's other rows don't decorate their icons either.
                         Image(systemName: "terminal").font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(agent.isRunning ? Color.green : .secondary)
-                            .frame(width: 30, height: 30)
-                            .background((agent.isRunning ? Color.green : Color.primary).opacity(0.1), in: .rect(cornerRadius: 8, style: .continuous))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 22)
                         VStack(alignment: .leading, spacing: 1) {
                             Text("SSH agent").font(.system(size: 13, weight: .semibold))
                             Group {
@@ -629,11 +665,14 @@ private struct SSHRow: View {
                             .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer()
-                        Text(agent.isRunning ? "On" : "Off")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(agent.isRunning ? Color.green : .secondary)
-                            .padding(.horizontal, 8).frame(height: 20)
-                            .background((agent.isRunning ? Color.green : Color.primary).opacity(0.1), in: .capsule)
+                        // Compact outlined badge, monochrome; only the dot carries state colour (as in the footer).
+                        HStack(spacing: 4) {
+                            Circle().fill(agent.isRunning ? Color.green : Color.secondary.opacity(0.5)).frame(width: 5, height: 5)
+                            Text(agent.isRunning ? "On" : "Off").font(.system(size: 10, weight: .medium))
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 7).frame(height: 18)
+                        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.12)))
                 }
             }
         }
