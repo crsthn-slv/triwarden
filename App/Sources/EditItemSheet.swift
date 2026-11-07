@@ -818,10 +818,11 @@ struct EditItemSheet: View {
                 Button {
                     withAnimation(websiteAnimation) { site.text.wrappedValue = undo.original; siteOnlyUndo = nil }
                 } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
+                    fieldIcon("arrow.uturn.backward")
                 }
-                .buttonStyle(.appSecondarySmall)
-                .help(Text("Put back \(undo.original)"))
+                .buttonStyle(.plain)
+                .help(Text("Undo: put back \(undo.original)"))
+                .accessibilityLabel(Text("Undo site only"))
                 .transition(.opacity)
             } else if let trimmed = WebsiteSiteOnly.trimmed(row.text) {
                 Button {
@@ -830,14 +831,24 @@ struct EditItemSheet: View {
                         site.text.wrappedValue = trimmed
                     }
                 } label: {
-                    Label("Site only", systemImage: "scissors")
+                    fieldIcon("scissors")
                 }
-                .buttonStyle(.appSecondarySmall)
-                .help(Text("Keep just \(trimmed). The page path and anything after ? or # are removed."))
+                .buttonStyle(.plain)
+                .help(Text("Site only: keep just \(trimmed). The page path and anything after ? or # are removed."))
+                .accessibilityLabel(Text("Site only"))
                 .accessibilityHint(Text("Changes this website to \(trimmed)"))
                 .transition(.opacity)
             }
         }
+    }
+
+    /// A square icon button beside a field, matching the password generator and QR scan buttons.
+    private func fieldIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName).font(.system(size: 14, weight: .medium))
+            .frame(width: 38, height: 38)
+            .background(Color.formInputFill, in: .rect(cornerRadius: 9, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Color(nsColor: .separatorColor)))
+            .contentShape(.rect)
     }
 
     private func websiteControls(id: UUID, dragging: Bool) -> some View {

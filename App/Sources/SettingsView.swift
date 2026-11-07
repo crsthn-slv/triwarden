@@ -380,7 +380,8 @@ private struct GeneralSettings: View {
             } header: {
                 Text("New logins")
             } footer: {
-                Text("Off by default. When on, saving a new login keeps just the site, for example https://example.com instead of https://example.com/login?next=…. The page path and anything after ? or # are dropped; http or https stays as entered. Some sign-ins need the full address, so editing a saved login never changes it. While editing, the Site only button next to a website does this for one address.")
+                // The examples are interpolated so they show as plain text, not links.
+                Text("Off by default. When on, saving a new login keeps just the site, for example \("https://example.com" as String) instead of \("https://example.com/login?next=…" as String). The page path and anything after ? or # are dropped; http or https stays as entered. Some sign-ins need the full address, so editing a saved login never changes it. While editing, the scissors button next to a website does this for one address.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
