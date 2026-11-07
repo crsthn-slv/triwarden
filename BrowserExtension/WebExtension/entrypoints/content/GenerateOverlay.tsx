@@ -73,12 +73,8 @@ export default function GenerateOverlay() {
     const place = menuPlace(m);
     if (!place) return { display: 'none' };
     const { left, width, vertical } = place;
-    return {
-      left,
-      width,
-      ...(vertical.top ? { top: vertical.top } : {}),
-      ...(vertical.bottom ? { bottom: vertical.bottom } : {}),
-    };
+    // Always `top` + clear `bottom`: Safari/WXT shadow overlays mis-resolve CSS `bottom` on fixed.
+    return { left, width, top: vertical.top, bottom: 'auto' };
   };
 
   /** Ask the app for a fresh value of `kind` and show it in the open menu. */

@@ -7,6 +7,8 @@ type Box = Pick<DOMRect, 'left' | 'right' | 'top' | 'height'>;
  */
 export const SYSTEM_AUTOFILL_ICON_CLEARANCE = 28;
 
+const ICON_SIZE = 22;
+
 /** Position the field icon inside a normal field, or just beyond a row of one-character code fields. */
 export function iconPosition(box: Box, rtl: boolean, outside: boolean) {
   // Outside a one-time-code row: past the field, so no clash with the native trailing decoration.
@@ -18,7 +20,7 @@ export function iconPosition(box: Box, rtl: boolean, outside: boolean) {
     : rtl
       ? box.left + 8 + SYSTEM_AUTOFILL_ICON_CLEARANCE
       : box.right - 30 - SYSTEM_AUTOFILL_ICON_CLEARANCE;
-  return { display: 'grid', left: `${left}px`, top: `${box.top + (box.height - 22) / 2}px` };
+  return { display: 'grid', left: `${left}px`, top: `${box.top + (box.height - ICON_SIZE) / 2}px` };
 }
 
 /** Align the menu with the field's writing start while keeping it inside the viewport. */
@@ -27,10 +29,24 @@ export function menuLeft(box: Pick<Box, 'left' | 'right'>, width: number, rtl: b
   return `${Math.max(8, Math.min(start, viewportWidth - width - 8))}px`;
 }
 
+/**
+ * Horizontal place for a menu that belongs to the in-field icon: the menu's trailing edge meets the
+ * icon's trailing edge (LTR ends at the icon; RTL starts at it), so it reads as that icon's panel.
+ */
+export function menuLeftNearIcon(
+  iconLeft: number,
+  width: number,
+  rtl: boolean,
+  viewportWidth: number,
+  iconSize = ICON_SIZE,
+) {
+  const start = rtl ? iconLeft : iconLeft + iconSize - width;
+  return `${Math.max(8, Math.min(start, viewportWidth - width - 8))}px`;
+}
+
 export type MenuVertical = {
-  /** CSS `top` or `bottom` value (with px), mutually exclusive. */
-  top?: string;
-  bottom?: string;
+  /** CSS `top` from the viewport. Always set — never `bottom`. */
+  top: string;
   /** For spring transform-origin: menus above grow upward. */
   above: boolean;
 };
@@ -39,6 +55,9 @@ export type MenuVertical = {
  * Prefer above the field: Safari / Chrome system AutoFill panels claim the space directly under
  * username and password fields, and page / shadow UI cannot cover them. Fall back to below only
  * when there is not enough room above.
+ *
+ * Always returns `top` (viewport px). CSS `bottom` on `position: fixed` inside WXT's shadow overlay
+ * mis-resolves in Safari and parks the menu at the host's static position (viewport top-left).
  */
 export function menuVertical(
   box: Pick<DOMRect, 'top' | 'bottom'>,
@@ -48,15 +67,8 @@ export function menuVertical(
 ): MenuVertical {
   const aboveRoom = box.top - 12;
   const belowRoom = viewportHeight - box.bottom - 12;
-  if (aboveRoom >= height) {
-    return { bottom: `${viewportHeight - box.top + gap}px`, above: true };
-  }
-  if (belowRoom >= height) {
-    return { top: `${box.bottom + gap}px`, above: false };
-  }
-  // Neither side fits fully: pick the side with more space.
-  if (aboveRoom >= belowRoom) {
-    return { bottom: `${viewportHeight - box.top + gap}px`, above: true };
+  if (aboveRoom >= height || aboveRoom >= belowRoom) {
+    return { top: `${Math.max(8, box.top - gap - height)}px`, above: true };
   }
   return { top: `${box.bottom + gap}px`, above: false };
 }
@@ -64,9 +76,31 @@ export function menuVertical(
 type Rect = Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>;
 
 /**
- * The generate menu (Safari): tied to the new-password field and its icon, and never over the confirm field, which
- * the person fills or checks next. Above the new password when it fits; otherwise below the confirm field (or the new
- * password when there is none). Horizontally it ends at the icon, so it reads as the icon's menu.
+ * Vertical place for the Safari generate menu: above the new-password field when it fits (system
+ * AutoFill owns the strip under the field); otherwise below the confirm field (or the new password
+ * when there is none) so the confirm stays readable. Always `top`, never CSS `bottom`.
+ */
+export function menuVerticalGenerate(
+  field: Rect,
+  confirm: Rect | null | undefined,
+  height: number,
+  viewportHeight: number,
+  gap = 6,
+): MenuVertical {
+  const topEdge = Math.min(field.top, confirm?.top ?? Infinity);
+  const bottomEdge = Math.max(field.bottom, confirm?.bottom ?? -Infinity);
+  const aboveRoom = topEdge - 12;
+  const belowRoom = viewportHeight - bottomEdge - 12;
+  if (aboveRoom >= height || aboveRoom >= belowRoom) {
+    return { top: `${Math.max(8, topEdge - gap - height)}px`, above: true };
+  }
+  return { top: `${bottomEdge + gap}px`, above: false };
+}
+
+/**
+ * The generate menu (Safari): tied to the new-password field's icon, and never over the confirm
+ * field. Horizontally it ends at the icon (`menuLeftNearIcon`). Vertically: above the new password
+ * when it fits; otherwise below the confirm (or the new password when there is none).
  */
 export function generateMenuPlace(
   field: Rect,
@@ -77,18 +111,11 @@ export function generateMenuPlace(
   rtl: boolean,
   gap = 6,
 ): { left: string; vertical: MenuVertical } {
-  const icon = Number.parseFloat(iconPosition({ ...field, height: field.bottom - field.top }, rtl, false).left);
-  const start = rtl ? icon : icon + 22 - width;
-  const left = `${Math.max(8, Math.min(start, viewport.width - width - 8))}px`;
-  const top = Math.min(field.top, confirm?.top ?? Infinity);
-  const bottom = Math.max(field.bottom, confirm?.bottom ?? -Infinity);
-  const aboveRoom = top - 12;
-  const belowRoom = viewport.height - bottom - 12;
-  const above = aboveRoom >= height || aboveRoom >= belowRoom;
+  const iconLeft = Number.parseFloat(
+    iconPosition({ ...field, height: field.bottom - field.top }, rtl, false).left,
+  );
   return {
-    left,
-    vertical: above
-      ? { bottom: `${viewport.height - top + gap}px`, above: true }
-      : { top: `${bottom + gap}px`, above: false },
+    left: menuLeftNearIcon(iconLeft, width, rtl, viewport.width),
+    vertical: menuVerticalGenerate(field, confirm, height, viewport.height, gap),
   };
 }

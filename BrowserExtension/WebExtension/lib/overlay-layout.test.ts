@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { generateMenuPlace, iconPosition, menuLeft, menuVertical, SYSTEM_AUTOFILL_ICON_CLEARANCE } from './overlay-layout';
+import {
+  generateMenuPlace,
+  iconPosition,
+  menuLeft,
+  menuLeftNearIcon,
+  menuVertical,
+  menuVerticalGenerate,
+  SYSTEM_AUTOFILL_ICON_CLEARANCE,
+} from './overlay-layout';
 
 const field = { left: 100, right: 300, top: 40, height: 42 } as DOMRect;
 
@@ -32,9 +40,17 @@ describe('overlay placement', () => {
     expect(menuLeft({ left: 700, right: 900 }, 332, true, 800)).toBe('460px');
   });
 
+  it('anchors the menu to the icon trailing edge', () => {
+    // icon at 200, width 280 → LTR left = 200 + 22 - 280 = -58 → clamped to 8
+    expect(menuLeftNearIcon(200, 280, false, 1200)).toBe('8px');
+    expect(menuLeftNearIcon(400, 280, false, 1200)).toBe('142px'); // 400 + 22 - 280
+    expect(menuLeftNearIcon(400, 280, true, 1200)).toBe('400px');
+  });
+
   it('prefers the menu above the field when there is room (system AutoFill owns below)', () => {
     const mid = { top: 400, bottom: 442 };
-    expect(menuVertical(mid, 200, 900)).toEqual({ bottom: '506px', above: true });
+    // top = 400 - 6 - 200 = 194
+    expect(menuVertical(mid, 200, 900)).toEqual({ top: '194px', above: true });
   });
 
   it('falls back below when the space above is too tight', () => {
@@ -44,8 +60,8 @@ describe('overlay placement', () => {
 
   it('picks the larger side when neither fits the full menu height', () => {
     const cramped = { top: 80, bottom: 120 };
-    // aboveRoom = 68, belowRoom = viewport - 120 - 12
-    expect(menuVertical(cramped, 200, 200)).toEqual({ bottom: '126px', above: true });
+    // aboveRoom = 68, belowRoom = 200 - 120 - 12 = 68 → above preferred when tied via >=
+    expect(menuVertical(cramped, 200, 200)).toEqual({ top: '8px', above: true }); // clamped
     expect(menuVertical(cramped, 200, 400)).toEqual({ top: '126px', above: false });
   });
 });
@@ -57,8 +73,9 @@ describe('generateMenuPlace', () => {
 
   it('sits above the new password when it fits, ending at the icon', () => {
     const p = generateMenuPlace(field, confirm, 280, 110, viewport, false);
-    expect(p.vertical).toEqual({ bottom: `${800 - 300 + 6}px`, above: true });
-    expect(Number.parseFloat(p.left) + 280).toBeCloseTo(400 - 30 - SYSTEM_AUTOFILL_ICON_CLEARANCE + 22);
+    expect(p.vertical).toEqual({ top: `${300 - 6 - 110}px`, above: true });
+    const iconLeft = 400 - 30 - SYSTEM_AUTOFILL_ICON_CLEARANCE;
+    expect(p.left).toBe(menuLeftNearIcon(iconLeft, 280, false, 1200));
   });
 
   it('goes below the confirm field, never over it, when there is no room above', () => {
@@ -71,5 +88,9 @@ describe('generateMenuPlace', () => {
   it('stays inside the viewport', () => {
     const p = generateMenuPlace({ left: 0, right: 120, top: 300, bottom: 340 }, null, 280, 110, viewport, false);
     expect(p.left).toBe('8px');
+  });
+
+  it('menuVerticalGenerate matches generateMenuPlace vertical', () => {
+    expect(menuVerticalGenerate(field, confirm, 110, 800)).toEqual({ top: '184px', above: true });
   });
 });
