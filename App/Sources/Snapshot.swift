@@ -705,7 +705,7 @@ enum Snapshot {
             }
             // Each format, so the sheet's height can be checked to stay the same.
             let savedFormat = UserDefaults.standard.string(forKey: "exportFormat")
-            for format in ["encryptedJSON", "json", "csv"] {
+            for format in ["encryptedJSON", "kdbx", "json", "csv"] {
                 UserDefaults.standard.set(format, forKey: "exportFormat")
                 render(ExportSheet().environment(vault).tint(.brand).background(Color(nsColor: .windowBackgroundColor)),
                        size: CGSize(width: 500, height: 600), appearance: appearance, to: dir.appending(path: "export-\(format)-\(name).png"))
