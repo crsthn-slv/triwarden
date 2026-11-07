@@ -13,10 +13,21 @@ import { AppMark } from './AppMark';
 
 type Target = GenerateTarget;
 type Kind = 'password' | 'passphrase';
-type Menu = { target: Target; note?: string };
+/** The menu shows a ready value the moment it opens, like a password manager's inline generator. */
+type Menu = { target: Target; kind: Kind; value?: string; error?: string };
 
-const MENU_WIDTH = 280;
-const MENU_HEIGHT = 110;
+const MENU_WIDTH = 300;
+const MENU_HEIGHT = 140;
+let lastKind: Kind = 'password'; // this page remembers the person's last choice while it stays open
+
+/** Digits and symbols in their own colours, so 0/O and l/1 read apart at a glance (as in Passwords and Bitwarden). */
+function Pretty(props: { value: string }) {
+  return (
+    <For each={[...props.value]}>
+      {(ch) => <span data-c={/\d/.test(ch) ? 'digit' : /[A-Za-z\s]/.test(ch) ? undefined : 'symbol'}>{ch}</span>}
+    </For>
+  );
+}
 
 export default function GenerateOverlay() {
   const [targets, setTargets] = createSignal<Target[]>([]);
@@ -70,26 +81,29 @@ export default function GenerateOverlay() {
     };
   };
 
-  function open(target: Target) {
-    setMenu({ target });
+  /** Ask the app for a fresh value of `kind` and show it in the open menu. */
+  async function generate(target: Target, kind: Kind) {
+    const mine = ++asking;
+    lastKind = kind;
+    setMenu({ target, kind });
+    const reply = await send({ command: 'generate', field: kind === 'passphrase' ? 'passphrase' : undefined });
+    if (mine !== asking) return;
+    if (!reply.ok || !reply.value) return setMenu({ target, kind, error: reply.error || "Triwarden isn't available." });
+    setMenu({ target, kind, value: reply.value });
   }
 
-  async function generate(kind: Kind, target: Target) {
-    const mine = ++asking;
-    setMenu({ target, note: kind === 'passphrase' ? 'Generating passphrase…' : 'Generating password…' });
-    const reply = await send({
-      command: 'generate',
-      field: kind === 'passphrase' ? 'passphrase' : undefined,
-    });
-    if (mine !== asking) return;
-    if (!reply.ok || !reply.value) {
-      setMenu({ target, note: reply.error || "Triwarden isn't available." });
-      return;
-    }
-    setValue(target.field, reply.value);
+  function toggle(target: Target) {
+    if (menu()?.target.field === target.field) return close();
+    void generate(target, lastKind);
+  }
+
+  /** Put the shown value in the new password and its confirm field. */
+  function use(m: Menu) {
+    if (!m.value) return;
+    setValue(m.target.field, m.value);
     // The confirm field gets the same value, so the person does not retype a password they never saw.
-    if (target.confirm?.isConnected && !target.confirm.disabled) setValue(target.confirm, reply.value);
-    target.field.focus();
+    if (m.target.confirm?.isConnected && !m.target.confirm.disabled) setValue(m.target.confirm, m.value);
+    m.target.field.focus();
     close();
   }
 
@@ -113,7 +127,15 @@ export default function GenerateOverlay() {
       if (menu() && !e.composedPath().includes(host)) close();
     };
     const keys = (e: KeyboardEvent) => {
-      if (menu() && e.key === 'Escape') close();
+      const m = menu();
+      if (!m) return;
+      if (e.key === 'Escape') close();
+      // Enter in the field while the menu shows a value: use it (and don't submit the form half-filled).
+      else if (e.key === 'Enter' && m.value && e.target === m.target.field) {
+        e.preventDefault();
+        e.stopPropagation();
+        use(m);
+      }
     };
     // A field that appears on focus (step-by-step sign-up) or a form revealed by a class change: look again.
     const focused = (e: FocusEvent) => {
@@ -142,11 +164,11 @@ export default function GenerateOverlay() {
           <button
             class="key"
             type="button"
-            title="Generate with Triwarden"
-            aria-label="Generate with Triwarden"
+            title="Suggest a strong password"
+            aria-label="Suggest a strong password with Triwarden"
             style={place(t)}
             on:mousedown={(e) => e.preventDefault()}
-            on:click={() => open(t)}
+            on:click={() => toggle(t)}
           >
             <AppMark size={22} />
           </button>
@@ -155,41 +177,72 @@ export default function GenerateOverlay() {
       <Show when={menu()}>
         {(m) => (
           <div
-            class="menu"
-            role="menu"
+            class="menu gen"
+            role="dialog"
+            aria-label="Suggested password"
             style={menuStyle(m())}
             data-rtl={isRTL(m().target.field)}
             data-above={menuPlace(m())?.vertical.above ?? false}
+            on:mousedown={(e) => e.preventDefault()}
           >
-            <Show when={m().note} fallback={
-              <div class="list">
-                <div
-                  class="row"
-                  role="menuitem"
-                  data-active="true"
-                  on:mousedown={(e) => e.preventDefault()}
-                  on:click={() => generate('password', m().target)}
-                >
-                  <span class="text">
-                    <span class="name">Generate password</span>
-                    <span class="detail">Uses your Generator settings</span>
+            <div class="group">{m().kind === 'passphrase' ? 'Suggested passphrase' : 'Suggested password'}</div>
+            <Show when={!m().error} fallback={<div class="note" dir="auto">{m().error}</div>}>
+              <div
+                class="row gen-row"
+                role="button"
+                data-active="true"
+                aria-disabled={!m().value}
+                title={m().target.confirm ? 'Fill password and confirmation' : 'Fill password'}
+                on:click={() => use(m())}
+              >
+                <span class="text">
+                  <span class="gen-value" data-loading={!m().value}>
+                    <Show when={m().value} fallback="Generating…">
+                      {(v) => <Pretty value={v()} />}
+                    </Show>
                   </span>
-                </div>
-                <div
-                  class="row"
-                  role="menuitem"
-                  on:mousedown={(e) => e.preventDefault()}
-                  on:click={() => generate('passphrase', m().target)}
-                >
-                  <span class="text">
-                    <span class="name">Generate passphrase</span>
-                    <span class="detail">Diceware words from your settings</span>
+                  <span class="detail">
+                    {m().target.confirm ? 'Click or press Return to fill both fields' : 'Click or press Return to fill'}
                   </span>
-                </div>
+                </span>
+                <button
+                  class="icon-btn"
+                  type="button"
+                  title="Another one"
+                  aria-label="Generate another"
+                  on:click={(e) => {
+                    e.stopPropagation();
+                    void generate(m().target, m().kind);
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+                    <path
+                      d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89M13.5 2.5v3.2h-3.2"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
-            }>
-              {(note) => <div class="note" dir="auto">{note()}</div>}
             </Show>
+            <div class="gen-kinds" role="radiogroup" aria-label="Kind">
+              <For each={['password', 'passphrase'] as Kind[]}>
+                {(kind) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={m().kind === kind}
+                    data-on={m().kind === kind}
+                    on:click={() => m().kind !== kind && void generate(m().target, kind)}
+                  >
+                    {kind === 'password' ? 'Password' : 'Passphrase'}
+                  </button>
+                )}
+              </For>
+            </div>
           </div>
         )}
       </Show>
