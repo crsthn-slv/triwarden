@@ -71,7 +71,10 @@ describe('offering to save a login', () => {
 
   it('ignores a click on a [role=button] inside a form: the form’s own submit covers it', () => {
     const { user, pw } = creds();
-    mount('<form><input name=u type=email><input name=p type=password><div role=button id=fake>Sign in</div></form>');
+    mount(
+      '<form><input name=u type=email><input name=p type=password><div role=button id=fake>Sign in</div>' +
+        '<button type=submit>Go</button></form>',
+    );
     fill(document.querySelector('[name=u]'), user);
     fill(document.querySelector('[name=p]'), pw);
     click(document.getElementById('fake')!);
@@ -118,6 +121,53 @@ describe('offering to save a login', () => {
     fill(document.querySelector('[name=new]'), pw);
     document.getElementById('f')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     expect(saves().map((r) => r.password)).toEqual([pw]);
+  });
+});
+
+describe('sign-up forms submitted from script', () => {
+  const reg =
+    '<form><input name=u type=email><input name=p type=password autocomplete=new-password>' +
+    '<input name=c type=password autocomplete=new-password>';
+
+  it('offers on a type="button" Register when the form has no submit button', () => {
+    const { user, pw } = creds();
+    mount(reg + '<button type=button id=eye>Show password</button><button type=button id=go>Register</button></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    fill(document.querySelector('[name=c]'), pw);
+    click(document.getElementById('eye')!);
+    expect(saves()).toHaveLength(0);
+    click(document.getElementById('go')!);
+    expect(saves()).toEqual([{ command: 'save', username: user.trim(), password: pw }]);
+  });
+
+  it('offers on a [role=button] Create an account', () => {
+    const { user, pw } = creds();
+    mount(reg + '<div role=button id=go><span>Create an account</span></div></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    fill(document.querySelector('[name=c]'), pw);
+    click(document.querySelector('#go span')!);
+    expect(saves()).toHaveLength(1);
+  });
+
+  it('offers on Enter in the confirm field', () => {
+    const { user, pw } = creds();
+    mount(reg + '<button type=button>Sign up</button></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    fill(document.querySelector('[name=c]'), pw);
+    press(document.querySelector('[name=c]')!, 'Enter');
+    expect(saves()).toHaveLength(1);
+  });
+
+  it('ignores a type="button" that does not read like submitting', () => {
+    const { user, pw } = creds();
+    mount(reg + '<button type=button id=gen>Generate password</button></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    click(document.getElementById('gen')!);
+    expect(saves()).toHaveLength(0);
   });
 });
 

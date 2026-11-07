@@ -1,16 +1,17 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { generatePasswordFields, isRTL, setValue, visible } from '../../lib/dom';
-import { iconPosition, menuLeft, menuVertical } from '../../lib/overlay-layout';
+import { generateTargets, isRTL, setValue, visible, type GenerateTarget } from '../../lib/dom';
+import { generateMenuPlace, iconPosition } from '../../lib/overlay-layout';
 import { send } from '../../lib/send';
 import { AppMark } from './AppMark';
 
 /**
  * Safari content UI: system AutoFill owns vault pick/fill on ordinary login fields.
  * Icons appear only on generate-relevant password fields (new-password, change-password,
- * registration). Save/Update still runs via `watchForSubmits` with no field icon.
+ * registration), never on the confirm field: generating fills both. Save/Update still runs via `watchForSubmits` with
+ * no field icon.
  */
 
-type Target = { field: HTMLInputElement };
+type Target = GenerateTarget;
 type Kind = 'password' | 'passphrase';
 type Menu = { target: Target; note?: string };
 
@@ -30,7 +31,7 @@ export default function GenerateOverlay() {
   };
 
   function scan() {
-    setTargets(generatePasswordFields().map((field) => ({ field })));
+    setTargets(generateTargets());
     setTick((n) => n + 1);
   }
 
@@ -44,9 +45,16 @@ export default function GenerateOverlay() {
     tick();
     const f = m.target.field;
     if (!f.isConnected) return null;
-    const r = f.getBoundingClientRect();
-    const left = menuLeft(r, MENU_WIDTH, isRTL(f), innerWidth);
-    const vertical = menuVertical(r, MENU_HEIGHT, innerHeight);
+    const c = m.target.confirm;
+    const confirm = c?.isConnected && visible(c) ? c.getBoundingClientRect() : null;
+    const { left, vertical } = generateMenuPlace(
+      f.getBoundingClientRect(),
+      confirm,
+      MENU_WIDTH,
+      MENU_HEIGHT,
+      { width: innerWidth, height: innerHeight },
+      isRTL(f),
+    );
     return { left, width: `${MENU_WIDTH}px`, vertical };
   };
 
@@ -79,6 +87,9 @@ export default function GenerateOverlay() {
       return;
     }
     setValue(target.field, reply.value);
+    // The confirm field gets the same value, so the person does not retype a password they never saw.
+    if (target.confirm?.isConnected && !target.confirm.disabled) setValue(target.confirm, reply.value);
+    target.field.focus();
     close();
   }
 
@@ -95,7 +106,7 @@ export default function GenerateOverlay() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['type', 'style', 'class'],
+      attributeFilter: ['type', 'style', 'class', 'autocomplete', 'hidden', 'disabled'],
     });
     const outside = (e: MouseEvent) => {
       const host = (root.getRootNode() as ShadowRoot).host;
@@ -104,6 +115,11 @@ export default function GenerateOverlay() {
     const keys = (e: KeyboardEvent) => {
       if (menu() && e.key === 'Escape') close();
     };
+    // A field that appears on focus (step-by-step sign-up) or a form revealed by a class change: look again.
+    const focused = (e: FocusEvent) => {
+      if (e.target instanceof HTMLInputElement && e.target.type === 'password') rescan();
+    };
+    document.addEventListener('focusin', focused, true);
     addEventListener('scroll', move, { passive: true, capture: true });
     addEventListener('resize', move, { passive: true });
     document.addEventListener('mousedown', outside, true);
@@ -115,6 +131,7 @@ export default function GenerateOverlay() {
       removeEventListener('resize', move);
       document.removeEventListener('mousedown', outside, true);
       document.removeEventListener('keydown', keys, true);
+      document.removeEventListener('focusin', focused, true);
     });
   });
 

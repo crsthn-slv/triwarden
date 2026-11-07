@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { iconPosition, menuLeft, menuVertical, SYSTEM_AUTOFILL_ICON_CLEARANCE } from './overlay-layout';
+import { generateMenuPlace, iconPosition, menuLeft, menuVertical, SYSTEM_AUTOFILL_ICON_CLEARANCE } from './overlay-layout';
 
 const field = { left: 100, right: 300, top: 40, height: 42 } as DOMRect;
 
@@ -47,5 +47,29 @@ describe('overlay placement', () => {
     // aboveRoom = 68, belowRoom = viewport - 120 - 12
     expect(menuVertical(cramped, 200, 200)).toEqual({ bottom: '126px', above: true });
     expect(menuVertical(cramped, 200, 400)).toEqual({ top: '126px', above: false });
+  });
+});
+
+describe('generateMenuPlace', () => {
+  const viewport = { width: 1200, height: 800 };
+  const field = { left: 100, right: 400, top: 300, bottom: 340 };
+  const confirm = { left: 100, right: 400, top: 360, bottom: 400 };
+
+  it('sits above the new password when it fits, ending at the icon', () => {
+    const p = generateMenuPlace(field, confirm, 280, 110, viewport, false);
+    expect(p.vertical).toEqual({ bottom: `${800 - 300 + 6}px`, above: true });
+    expect(Number.parseFloat(p.left) + 280).toBeCloseTo(400 - 30 - SYSTEM_AUTOFILL_ICON_CLEARANCE + 22);
+  });
+
+  it('goes below the confirm field, never over it, when there is no room above', () => {
+    const high = { ...field, top: 40, bottom: 80 };
+    const below = { ...confirm, top: 100, bottom: 140 };
+    const p = generateMenuPlace(high, below, 280, 110, viewport, false);
+    expect(p.vertical).toEqual({ top: `${140 + 6}px`, above: false });
+  });
+
+  it('stays inside the viewport', () => {
+    const p = generateMenuPlace({ left: 0, right: 120, top: 300, bottom: 340 }, null, 280, 110, viewport, false);
+    expect(p.left).toBe('8px');
   });
 });

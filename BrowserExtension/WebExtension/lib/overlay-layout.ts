@@ -60,3 +60,35 @@ export function menuVertical(
   }
   return { top: `${box.bottom + gap}px`, above: false };
 }
+
+type Rect = Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>;
+
+/**
+ * The generate menu (Safari): tied to the new-password field and its icon, and never over the confirm field, which
+ * the person fills or checks next. Above the new password when it fits; otherwise below the confirm field (or the new
+ * password when there is none). Horizontally it ends at the icon, so it reads as the icon's menu.
+ */
+export function generateMenuPlace(
+  field: Rect,
+  confirm: Rect | null | undefined,
+  width: number,
+  height: number,
+  viewport: { width: number; height: number },
+  rtl: boolean,
+  gap = 6,
+): { left: string; vertical: MenuVertical } {
+  const icon = Number.parseFloat(iconPosition({ ...field, height: field.bottom - field.top }, rtl, false).left);
+  const start = rtl ? icon : icon + 22 - width;
+  const left = `${Math.max(8, Math.min(start, viewport.width - width - 8))}px`;
+  const top = Math.min(field.top, confirm?.top ?? Infinity);
+  const bottom = Math.max(field.bottom, confirm?.bottom ?? -Infinity);
+  const aboveRoom = top - 12;
+  const belowRoom = viewport.height - bottom - 12;
+  const above = aboveRoom >= height || aboveRoom >= belowRoom;
+  return {
+    left,
+    vertical: above
+      ? { bottom: `${viewport.height - top + gap}px`, above: true }
+      : { top: `${bottom + gap}px`, above: false },
+  };
+}
