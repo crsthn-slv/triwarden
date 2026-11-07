@@ -1,9 +1,8 @@
 import AuthenticationServices
 import SwiftUI
 
-/// System AutoFill entry point. Credentials never fill silently. When the main Triwarden window already
-/// has the vault unlocked, the extension reuses that session (Touch ID first when enrolled; otherwise no
-/// master-password re-prompt). When the app is locked, Touch ID or the master password unlocks here.
+/// System AutoFill entry point. Every request needs the vault unlocked (Touch ID or master password)
+/// inside the extension; nothing is filled silently.
 final class CredentialProviderViewController: ASCredentialProviderViewController {
     private let state = AutoFillState()
 

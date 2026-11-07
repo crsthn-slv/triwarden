@@ -276,8 +276,6 @@ targets:
         product: TriCrypto
       - package: VaultCore
         product: VaultwardenAPI
-      - package: VaultCore
-        product: SSHAgent
     entitlements:
       path: AutoFill/TriwardenAutoFill.entitlements
       properties:

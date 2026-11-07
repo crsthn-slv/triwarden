@@ -1,6 +1,5 @@
 import AppKit
 import AuthenticationServices
-import SSHAgent
 import TriCrypto
 import Observation
 import SwiftUI
@@ -79,7 +78,6 @@ final class AutoFillState {
         }
         domains = [request.rpId.lowercased()]
         refreshTouchIDEnabled()
-        Task { await preferUnlockedAppSession() }
     }
 
     func begin(mode: Mode, services: [ASCredentialServiceIdentifier], preselect: String?) {
@@ -93,7 +91,6 @@ final class AutoFillState {
             }
         }
         refreshTouchIDEnabled()
-        Task { await preferUnlockedAppSession() }
     }
 
     private func resetRequest() {
@@ -124,34 +121,6 @@ final class AutoFillState {
 
     private func refreshTouchIDEnabled() {
         touchIDEnabled = touchIDAccountIDs.contains(where: AccountStore.isTouchIDEnabled)
-    }
-
-
-    /// When the main Triwarden window already has this vault unlocked, reuse those keys so AutoFill does not
-    /// ask for the master password again. Touch ID still runs first when enrolled (user presence). Own-binary
-    /// socket only; fails closed if the app is locked or not running.
-    @discardableResult
-    private func borrowKeysFromUnlockedApp() -> Bool {
-        let reply = BridgeClient.send(CLIRequest(command: .keys))
-        guard reply.ok, let rows = reply.rows, !rows.isEmpty else { return false }
-        var keys: [String: SymmetricKeyPair] = [:]
-        for row in rows {
-            guard let data = Data(base64Encoded: row.detail),
-                  let key = try? SymmetricKeyPair(combined: data) else { continue }
-            keys[row.id] = key
-        }
-        guard !keys.isEmpty else { return false }
-        open(with: keys)
-        return unlocked
-    }
-
-    /// Prefer Touch ID when enrolled; otherwise (or after a cancelled Touch ID) adopt the main app's open session.
-    func preferUnlockedAppSession() async {
-        if touchIDEnabled {
-            await unlockWithTouchID()
-            if unlocked { return }
-        }
-        _ = borrowKeysFromUnlockedApp()
     }
 
     func unlock(password: String) async {
@@ -659,7 +628,7 @@ private struct UnlockPane: View {
         }
         .onAppear {
             focused = true
-            // Touch ID / app-session handoff already starts from `begin` via preferUnlockedAppSession().
+            if state.touchIDEnabled { Task { await state.unlockWithTouchID() } }
         }
     }
 }

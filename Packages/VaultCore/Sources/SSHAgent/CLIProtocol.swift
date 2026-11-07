@@ -10,9 +10,6 @@ public struct CLIRequest: Codable, Sendable, Equatable {
         /// Browser extension: copy one field of a login (`field`: username, password or totp) to the clipboard. The app
         /// does the copying, so the value never reaches the extension.
         case copy
-        /// AutoFill appex: user keys for accounts the main app already has unlocked (own binary only).
-        /// `rows[].id` is the account id; `rows[].detail` is the 64-byte combined key, base64.
-        case keys
     }
     public var command: Command
     public var query: String?
