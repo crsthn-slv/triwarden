@@ -213,6 +213,8 @@ final class QuickSearchController {
         let panel = makePanel()
         self.panel = panel
         panel.contentView?.layoutSubtreeIfNeeded()
+        // Stay ordered out until show(). Prebuild focus must not make AppKit key this panel.
+        panel.orderOut(nil)
     }
 
     func show() {
