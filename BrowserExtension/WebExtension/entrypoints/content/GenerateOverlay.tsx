@@ -120,7 +120,7 @@ export default function GenerateOverlay() {
     // `fixed` + clear right/bottom: same viewport coords as getBoundingClientRect; avoids the
     // absolute-in-0×0-host Safari trap that parked only the X edge wrong under WXT.
     return {
-      position: 'fixed',
+      position: 'fixed' as const,
       left: `${pos.left}px`,
       top: `${pos.top}px`,
       width: `${MENU_WIDTH}px`,
