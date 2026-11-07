@@ -86,10 +86,17 @@ describe('GenerateOverlay', () => {
     const host = await mount();
     host.querySelector<HTMLButtonElement>('.key')!.click();
     await tick(5);
+    expect(host.querySelector('.gen-kinds')!.getAttribute('data-kind')).toBe('password');
+    expect(host.querySelector('.gen-kinds-thumb')).not.toBeNull();
+    // Prior suggestion stays visible during soft tab switch (no Generating flash).
+    const before = host.querySelector('.gen-value')!.textContent;
     host.querySelectorAll<HTMLButtonElement>('.gen-kinds button')[1]!.click();
+    expect(host.querySelector('.gen-kinds')!.getAttribute('data-kind')).toBe('passphrase');
+    expect(host.querySelector('.gen-value')!.textContent).toBe(before);
     await tick(5);
     expect(vi.mocked(send).mock.calls.at(-1)![0]).toEqual({ command: 'generate', field: 'passphrase' });
     expect(host.querySelector('.gen-value')!.textContent).toBe('correct-horse-battery');
+    expect(host.querySelector('.gen-tab-pane')!.getAttribute('data-kind')).toBe('passphrase');
   });
 
   it('shows Length / Include chips / strength / Use Password like the app compact generator', async () => {

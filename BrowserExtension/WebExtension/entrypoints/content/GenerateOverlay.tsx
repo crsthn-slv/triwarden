@@ -371,11 +371,12 @@ export default function GenerateOverlay() {
       if (seed) setMenuPos(seed);
     }
     const prev = menu();
+    // Keep the prior suggestion while a soft regen loads — including Password↔Passphrase tab
+    // switches — so the panel cross-fades instead of flashing empty "Generating…".
     const keep =
       !!opts.soft &&
       !!prev &&
       prev.target.field === target.field &&
-      prev.kind === kind &&
       !!prev.value &&
       !prev.error;
     setMenu({
@@ -587,7 +588,8 @@ export default function GenerateOverlay() {
                 {m().kind === 'passphrase' ? 'Suggested passphrase' : 'Suggested password'}
               </div>
 
-              <div class="gen-kinds" role="radiogroup" aria-label="Kind">
+              <div class="gen-kinds" role="radiogroup" aria-label="Kind" data-kind={m().kind}>
+                <span class="gen-kinds-thumb" aria-hidden="true" />
                 <For each={['password', 'passphrase'] as Kind[]}>
                   {(kind) => (
                     <button
@@ -595,7 +597,7 @@ export default function GenerateOverlay() {
                       role="radio"
                       aria-checked={m().kind === kind}
                       data-on={m().kind === kind}
-                      on:click={() => m().kind !== kind && void generate(m().target, kind)}
+                      on:click={() => m().kind !== kind && void generate(m().target, kind, { soft: true })}
                     >
                       {kind === 'password' ? 'Password' : 'Passphrase'}
                     </button>
@@ -657,7 +659,7 @@ export default function GenerateOverlay() {
                 </div>
 
                 <Show when={m().kind === 'password'}>
-                  <div class="gen-options">
+                  <div class="gen-options gen-tab-pane" data-kind="password">
                     <div class="gen-opt-stack">
                       <span class="gen-opt-label">Length</span>
                       <div class="gen-opt-row">
@@ -754,7 +756,7 @@ export default function GenerateOverlay() {
                 </Show>
 
                 <Show when={m().kind === 'passphrase'}>
-                  <div class="gen-options">
+                  <div class="gen-options gen-tab-pane" data-kind="passphrase">
                     <div class="gen-opt-stack">
                       <span class="gen-opt-label">Number of words</span>
                       <div class="gen-opt-row">
