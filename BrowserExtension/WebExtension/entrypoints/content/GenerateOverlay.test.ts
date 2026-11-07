@@ -3,7 +3,32 @@ import { createComponent, render } from 'solid-js/web';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/send', () => ({
-  send: vi.fn(async () => ({ ok: true, value: 'Gen3rated!Pw' })),
+  send: vi.fn(async (req: { field?: string; length?: number; uppercase?: boolean }) => {
+    if (req.field === 'passphrase') {
+      return {
+        ok: true,
+        value: 'correct-horse-battery',
+        length: req.length ?? 6,
+        separator: '-',
+        capitalize: false,
+        includeNumber: false,
+        entropyBits: 77,
+      };
+    }
+    return {
+      ok: true,
+      value: 'Gen3rated!Pw',
+      length: req.length ?? 20,
+      uppercase: req.uppercase ?? true,
+      lowercase: true,
+      digits: true,
+      symbols: true,
+      avoidAmbiguous: true,
+      minNumbers: 1,
+      minSpecial: 1,
+      entropyBits: 118,
+    };
+  }),
 }));
 const { default: GenerateOverlay } = await import('./GenerateOverlay');
 
@@ -15,6 +40,7 @@ let dispose: (() => void) | undefined;
 afterEach(() => {
   dispose?.();
   document.body.innerHTML = '';
+  vi.clearAllMocks();
 });
 
 describe('GenerateOverlay', () => {
@@ -63,6 +89,36 @@ describe('GenerateOverlay', () => {
     host.querySelectorAll<HTMLButtonElement>('.gen-kinds button')[1]!.click();
     await tick(5);
     expect(vi.mocked(send).mock.calls.at(-1)![0]).toEqual({ command: 'generate', field: 'passphrase' });
+    expect(host.querySelector('.gen-value')!.textContent).toBe('correct-horse-battery');
+  });
+
+  it('shows Length / Include chips / strength / Use Password like the app compact generator', async () => {
+    const host = await mount();
+    host.querySelector<HTMLButtonElement>('.key')!.click();
+    await tick(5);
+    expect(host.querySelector('.gen-slider')).not.toBeNull();
+    expect(host.querySelectorAll('.gen-chip').length).toBe(4);
+    expect(host.querySelector('.gen-strength-label')!.textContent).toBe('Very strong');
+    expect(host.querySelector('.gen-use')!.textContent).toBe('Use Password');
+    host.querySelector<HTMLButtonElement>('.gen-use')!.click();
+    expect(document.querySelector<HTMLInputElement>('[name=p]')!.value).toBe('Gen3rated!Pw');
+  });
+
+  it('changing Length re-generates with the new length so the app can persist prefs', async () => {
+    const { send } = await import('../../lib/send');
+    const host = await mount();
+    host.querySelector<HTMLButtonElement>('.key')!.click();
+    await tick(5);
+    // First call loads saved prefs (no overrides); reply seeds local state.
+    expect(vi.mocked(send).mock.calls[0]![0]).toEqual({ command: 'generate', field: undefined });
+    const plus = host.querySelector<HTMLButtonElement>('.gen-stepper button[aria-label="Increase Length"]')!;
+    plus.click();
+    await tick(5);
+    const last = vi.mocked(send).mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(last.command).toBe('generate');
+    expect(last.length).toBe(21);
+    expect(last.uppercase).toBe(true);
+    expect(last.digits).toBe(true);
   });
 
   it('keeps X and Y after drag ends (absolute place, not a cleared delta)', async () => {

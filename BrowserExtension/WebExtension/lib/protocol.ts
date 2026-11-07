@@ -17,6 +17,24 @@ export type Row = {
   passkey?: boolean;
 };
 
+/** Options echoed by `generate` (and accepted on the request) — same keys as the app Generator prefs. */
+export type GeneratorOptions = {
+  /** Password character count, or passphrase word count. */
+  length?: number;
+  uppercase?: boolean;
+  lowercase?: boolean;
+  digits?: boolean;
+  symbols?: boolean;
+  avoidAmbiguous?: boolean;
+  minNumbers?: number;
+  minSpecial?: number;
+  separator?: string;
+  capitalize?: boolean;
+  includeNumber?: boolean;
+  /** Entropy estimate in bits for the strength meter. */
+  entropyBits?: number;
+};
+
 export type Reply = {
   ok: boolean;
   error?: string;
@@ -31,7 +49,7 @@ export type Reply = {
   totpPeriod?: number;
   /** `generate`: the fresh password or passphrase. */
   value?: string;
-};
+} & GeneratorOptions;
 
 export type Command = 'match' | 'fill' | 'save' | 'copy' | 'generate';
 export const COMMANDS: ReadonlySet<string> = new Set<Command>(['match', 'fill', 'save', 'copy', 'generate']);
@@ -46,6 +64,18 @@ export type Request = {
   codes?: boolean;
   /** With `codes`: the person asked to see them. A field that only took focus never sets this. */
   reveal?: boolean;
-  /** `generate` password: optional length override. */
+  /** `generate` password: optional length override (passphrase: word count). */
   length?: number;
+  /** `generate` password charset / rules — persisted into the app's `generator` prefs when sent. */
+  uppercase?: boolean;
+  lowercase?: boolean;
+  digits?: boolean;
+  symbols?: boolean;
+  avoidAmbiguous?: boolean;
+  minNumbers?: number;
+  minSpecial?: number;
+  /** `generate` passphrase options — persisted into `passphraseGenerator` when sent. */
+  separator?: string;
+  capitalize?: boolean;
+  includeNumber?: boolean;
 };
