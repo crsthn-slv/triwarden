@@ -12,10 +12,10 @@ export default defineBackground(() => {
   // Touch ID until an entry is picked. Safari has no context menus API.
   if (browser.contextMenus) setUpContextMenu();
 
-  // The fill shortcut (see `commands` in wxt.config.ts): every frame of the tab hears it, and the ones with a
-  // login or code field answer by filling or opening the menu.
+  // The fill shortcut: Chromium/Firefox open the vault overlay. Safari leaves pick/fill to system AutoFill.
   browser.commands.onCommand.addListener(async (command, tab) => {
     if (command !== 'fill-login') return;
+    if (import.meta.env.BROWSER === 'safari') return;
     const id = tab?.id ?? (await browser.tabs.query({ active: true, currentWindow: true }))[0]?.id;
     if (id != null) await browser.tabs.sendMessage(id, { trigger: 'fill' }).catch(() => {});
   });

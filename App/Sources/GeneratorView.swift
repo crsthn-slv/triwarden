@@ -477,7 +477,14 @@ private struct HistoryRow: View {
                 .font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: entry.value).font(.system(size: 13, design: .monospaced)).lineLimit(1).truncationMode(.middle)
-                Text(entry.date, format: .relative(presentation: .named)).font(.system(size: 11)).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    if let site = entry.site {
+                        Text(verbatim: site).lineLimit(1).truncationMode(.middle)
+                        Text(verbatim: "·")
+                    }
+                    Text(entry.date, format: .relative(presentation: .named))
+                }
+                .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
             Button {

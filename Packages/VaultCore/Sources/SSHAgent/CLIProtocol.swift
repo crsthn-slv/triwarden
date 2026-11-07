@@ -20,6 +20,18 @@ public struct CLIRequest: Codable, Sendable, Equatable {
     /// For `get`: password (default), username, uri, notes, totp, or a custom field name.
     public var field: String?
     public var length: Int?
+    /// `generate` password: charset / rules (same keys as the app Generator's `generator` prefs).
+    public var uppercase: Bool?
+    public var lowercase: Bool?
+    public var digits: Bool?
+    public var symbols: Bool?
+    public var avoidAmbiguous: Bool?
+    public var minNumbers: Int?
+    public var minSpecial: Int?
+    /// `generate` passphrase: word separator / capitalisation / trailing digit (same as `passphraseGenerator`).
+    public var separator: String?
+    public var capitalize: Bool?
+    public var includeNumber: Bool?
     /// `match`: also return each login's current one-time code. Only a code field asks for this.
     public var codes: Bool?
     /// `match` with `codes`: the person asked for them (clicked the icon, pressed the shortcut). A field that merely
@@ -34,9 +46,15 @@ public struct CLIRequest: Codable, Sendable, Equatable {
     public var browser: String?
 
     public init(command: Command, query: String? = nil, field: String? = nil, length: Int? = nil,
+                uppercase: Bool? = nil, lowercase: Bool? = nil, digits: Bool? = nil, symbols: Bool? = nil,
+                avoidAmbiguous: Bool? = nil, minNumbers: Int? = nil, minSpecial: Int? = nil,
+                separator: String? = nil, capitalize: Bool? = nil, includeNumber: Bool? = nil,
                 url: String? = nil, username: String? = nil, password: String? = nil, codes: Bool? = nil,
                 reveal: Bool? = nil, origin: String? = nil, browser: String? = nil) {
         self.command = command; self.query = query; self.field = field; self.length = length
+        self.uppercase = uppercase; self.lowercase = lowercase; self.digits = digits; self.symbols = symbols
+        self.avoidAmbiguous = avoidAmbiguous; self.minNumbers = minNumbers; self.minSpecial = minSpecial
+        self.separator = separator; self.capitalize = capitalize; self.includeNumber = includeNumber
         self.url = url; self.username = username; self.password = password; self.codes = codes; self.reveal = reveal; self.origin = origin; self.browser = browser
     }
 }
@@ -78,6 +96,34 @@ public struct CLIResponse: Codable, Sendable, Equatable {
     public var error: String?
     /// `match`: whether the Browser setting "Show suggestions when a field is focused" is on. The extension keeps it.
     public var autoShow: Bool?
+    /// `generate`: echo of the options that produced `value` (length = characters or passphrase words).
+    public var length: Int?
+    public var uppercase: Bool?
+    public var lowercase: Bool?
+    public var digits: Bool?
+    public var symbols: Bool?
+    public var avoidAmbiguous: Bool?
+    public var minNumbers: Int?
+    public var minSpecial: Int?
+    public var separator: String?
+    public var capitalize: Bool?
+    public var includeNumber: Bool?
+    /// `generate`: entropy estimate in bits (same formula as the app strength meter).
+    public var entropyBits: Double?
+
+    public init(ok: Bool, value: String? = nil, username: String? = nil, password: String? = nil, totp: String? = nil,
+                totpRemaining: Int? = nil, totpPeriod: Int? = nil, rows: [Row]? = nil, error: String? = nil,
+                autoShow: Bool? = nil, length: Int? = nil, uppercase: Bool? = nil, lowercase: Bool? = nil,
+                digits: Bool? = nil, symbols: Bool? = nil, avoidAmbiguous: Bool? = nil, minNumbers: Int? = nil,
+                minSpecial: Int? = nil, separator: String? = nil, capitalize: Bool? = nil, includeNumber: Bool? = nil,
+                entropyBits: Double? = nil) {
+        self.ok = ok; self.value = value; self.username = username; self.password = password; self.totp = totp
+        self.totpRemaining = totpRemaining; self.totpPeriod = totpPeriod; self.rows = rows; self.error = error
+        self.autoShow = autoShow; self.length = length; self.uppercase = uppercase; self.lowercase = lowercase
+        self.digits = digits; self.symbols = symbols; self.avoidAmbiguous = avoidAmbiguous
+        self.minNumbers = minNumbers; self.minSpecial = minSpecial; self.separator = separator
+        self.capitalize = capitalize; self.includeNumber = includeNumber; self.entropyBits = entropyBits
+    }
 
     public static func success(_ value: String) -> CLIResponse { CLIResponse(ok: true, value: value) }
     public static func list(_ rows: [Row], autoShow: Bool? = nil) -> CLIResponse {

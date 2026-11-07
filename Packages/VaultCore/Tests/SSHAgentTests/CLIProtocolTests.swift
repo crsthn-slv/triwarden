@@ -82,4 +82,34 @@ struct CLIProtocolTests {
         let decoded = try JSONDecoder().decode(CLIResponse.self, from: reply)
         #expect(decoded.rows?.first?.totpPeriod == nil)
     }
+
+    @Test func generateRequestCarriesPasswordOptions() throws {
+        let data = Data(#"""
+        {"command":"generate","length":24,"uppercase":true,"lowercase":true,"digits":false,"symbols":true,"avoidAmbiguous":true,"minNumbers":2,"minSpecial":1}
+        """#.utf8)
+        let req = try JSONDecoder().decode(CLIRequest.self, from: data)
+        #expect(req.command == .generate)
+        #expect(req.length == 24)
+        #expect(req.digits == false)
+        #expect(req.minNumbers == 2)
+        #expect(req.symbols == true)
+    }
+
+    @Test func generateReplyEchoesOptionsAndEntropy() throws {
+        var reply = CLIResponse(ok: true, value: "Ab1!", length: 20, uppercase: true, lowercase: true,
+                                digits: true, symbols: true, avoidAmbiguous: true, minNumbers: 1,
+                                minSpecial: 1, entropyBits: 110)
+        let json = try object(reply)
+        #expect(json["value"] as? String == "Ab1!")
+        #expect(json["length"] as? Int == 20)
+        #expect(json["uppercase"] as? Bool == true)
+        #expect((json["entropyBits"] as? NSNumber)?.doubleValue == 110)
+        // A passphrase reply uses length as word count and carries separator fields.
+        reply = CLIResponse(ok: true, value: "a-b-c", length: 6, separator: "-", capitalize: false,
+                            includeNumber: true, entropyBits: 80)
+        let phrase = try object(reply)
+        #expect(phrase["separator"] as? String == "-")
+        #expect(phrase["includeNumber"] as? Bool == true)
+    }
+
 }

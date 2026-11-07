@@ -71,7 +71,10 @@ describe('offering to save a login', () => {
 
   it('ignores a click on a [role=button] inside a form: the form’s own submit covers it', () => {
     const { user, pw } = creds();
-    mount('<form><input name=u type=email><input name=p type=password><div role=button id=fake>Sign in</div></form>');
+    mount(
+      '<form><input name=u type=email><input name=p type=password><div role=button id=fake>Sign in</div>' +
+        '<button type=submit>Go</button></form>',
+    );
     fill(document.querySelector('[name=u]'), user);
     fill(document.querySelector('[name=p]'), pw);
     click(document.getElementById('fake')!);
@@ -121,6 +124,53 @@ describe('offering to save a login', () => {
   });
 });
 
+describe('sign-up forms submitted from script', () => {
+  const reg =
+    '<form><input name=u type=email><input name=p type=password autocomplete=new-password>' +
+    '<input name=c type=password autocomplete=new-password>';
+
+  it('offers on a type="button" Register when the form has no submit button', () => {
+    const { user, pw } = creds();
+    mount(reg + '<button type=button id=eye>Show password</button><button type=button id=go>Register</button></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    fill(document.querySelector('[name=c]'), pw);
+    click(document.getElementById('eye')!);
+    expect(saves()).toHaveLength(0);
+    click(document.getElementById('go')!);
+    expect(saves()).toEqual([{ command: 'save', username: user.trim(), password: pw }]);
+  });
+
+  it('offers on a [role=button] Create an account', () => {
+    const { user, pw } = creds();
+    mount(reg + '<div role=button id=go><span>Create an account</span></div></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    fill(document.querySelector('[name=c]'), pw);
+    click(document.querySelector('#go span')!);
+    expect(saves()).toHaveLength(1);
+  });
+
+  it('offers on Enter in the confirm field', () => {
+    const { user, pw } = creds();
+    mount(reg + '<button type=button>Sign up</button></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    fill(document.querySelector('[name=c]'), pw);
+    press(document.querySelector('[name=c]')!, 'Enter');
+    expect(saves()).toHaveLength(1);
+  });
+
+  it('ignores a type="button" that does not read like submitting', () => {
+    const { user, pw } = creds();
+    mount(reg + '<button type=button id=gen>Generate password</button></form>');
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    click(document.getElementById('gen')!);
+    expect(saves()).toHaveLength(0);
+  });
+});
+
 describe('pages with no form', () => {
   const page = '<input name=u type=email><input name=p type=password>';
 
@@ -167,5 +217,52 @@ describe('pages with no form', () => {
     fill(document.querySelector('[name=p]'), pw);
     press(document.querySelector('[name=p]')!, 'a');
     expect(saves()).toHaveLength(0);
+  });
+});
+
+describe('SPA success after register', () => {
+  it('offers when the filled registration form is removed without a submit click', async () => {
+    const { user, pw } = creds();
+    mount(
+      '<div id=app><form><input name=u type=email><input name=p type=password autocomplete=new-password>' +
+        '<button type=button id=go>Register</button></form></div>',
+    );
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    // Success route: SPA unmounts the form (Apple's save sheet appears around then).
+    document.getElementById('app')!.innerHTML = '<p>Welcome</p>';
+    await Promise.resolve(); // MutationObserver delivers as a microtask
+    expect(saves()).toEqual([{ command: 'save', username: user.trim(), password: pw }]);
+  });
+
+  it('does not offer again on pushState after Register already saved', () => {
+    const { user, pw } = creds();
+    mount(
+      '<form id=f><input name=u type=email><input name=p type=password autocomplete=new-password>' +
+        '<button type=button id=go>Create an account</button></form>',
+    );
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    click(document.getElementById('go')!);
+    expect(saves()).toHaveLength(1);
+    history.pushState({}, '', '/welcome-' + Math.random());
+    expect(saves()).toHaveLength(1);
+  });
+
+  it('offers on pushState after a submit-like click when the form was cleared first', () => {
+    const { user, pw } = creds();
+    mount(
+      '<form><input name=u type=email><input name=p type=password autocomplete=new-password>' +
+        '<button type=button id=go>Register</button></form>',
+    );
+    fill(document.querySelector('[name=u]'), user);
+    fill(document.querySelector('[name=p]'), pw);
+    click(document.getElementById('go')!);
+    expect(saves()).toHaveLength(1);
+    // Simulate a page that cleared fields then navigated; already offered once.
+    fill(document.querySelector('[name=u]'), '');
+    fill(document.querySelector('[name=p]'), '');
+    history.pushState({}, '', '/done-' + Math.random());
+    expect(saves()).toHaveLength(1);
   });
 });
