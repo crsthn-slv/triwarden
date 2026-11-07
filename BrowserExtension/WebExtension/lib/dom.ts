@@ -76,3 +76,106 @@ export function fillOtp(boxes: HTMLInputElement[], code: string): void {
   boxes.forEach((box, i) => setValue(box, code[i]));
   boxes[Math.min(code.length, boxes.length) - 1]?.focus();
 }
+
+
+/**
+ * The group a password field belongs to: its form, else the nearest wrapper that also holds a button (SPA sign-up
+ * pages often have no <form>), else the whole page.
+ */
+export function fieldScope(field: HTMLElement): ParentNode {
+  const form = (field as HTMLInputElement).form;
+  if (form) return form;
+  let el = field.parentElement;
+  for (let depth = 0; el && el !== document.body && depth < 8; depth++, el = el.parentElement) {
+    if (el.querySelector('button, input[type="submit"], input[type="button"], [role="button"]')) return el;
+  }
+  return document;
+}
+
+const fieldText = (f: HTMLInputElement): string => {
+  const labels = [...(f.labels ?? [])].map((l) => l.textContent);
+  return [f.name, f.id, f.getAttribute('aria-label'), f.placeholder, ...labels].filter(Boolean).join(' ');
+};
+
+const CURRENT_HINT = /\b(current|old|existing)\b|current.?pass|old.?pass/i;
+const CONFIRM_HINT = /confirm|re-?enter|re-?type|repeat|again|verify|(?:pass(?:word)?|pwd)[-_ ]?2\b/i;
+/** A button or heading that says the page makes or changes a password. */
+const SIGNUP_HINT =
+  /\b(sign\s*up|register|registration|join|get\s+started|create\s+(?:an?\s+|your\s+|new\s+)?(?:account|password)|new\s+(?:account|password)|change\s+(?:your\s+)?password|set\s+(?:a\s+|your\s+)?(?:new\s+)?password|choose\s+(?:a\s+)?password|reset\s+(?:your\s+)?password|update\s+(?:your\s+)?password)\b/i;
+/** A submit control that says this is a sign-in. Decides over headings: login pages often say "Sign up" somewhere. */
+const SIGNIN_HINT = /\b(log\s*in|log\s*on|sign\s*in|sign\s*on|continue\s+with\s+password|unlock)\b/i;
+/** Secondary buttons that never describe the form ("Forgot password?", "Show password"). */
+const ASIDE_HINT =
+  /forgot|trouble|can.?t|show|hide|reveal|toggle|already|have\s+an\s+account|instead|back\s+to|with\s+(google|apple|github|microsoft|facebook|sso)|passkey/i;
+
+const visiblePasswords = (scope: ParentNode): HTMLInputElement[] =>
+  [...scope.querySelectorAll<HTMLInputElement>('input[type="password"]')].filter(visible);
+
+/** What a group of password fields is for, decided by its submit button first and its headings second. */
+function scopeIntent(scope: ParentNode): 'signup' | 'signin' | 'unknown' {
+  const label = (b: Element) =>
+    `${b.textContent || ''} ${(b as HTMLInputElement).value || ''} ${b.getAttribute('aria-label') || ''}`;
+  const all = [...scope.querySelectorAll<HTMLElement>('button, input[type="submit"], input[type="button"], [role="button"]')]
+    .filter(visible)
+    .filter((b) => !ASIDE_HINT.test(label(b)));
+  // The submit button speaks for the form; other buttons ("Sign up" next to "Log in") only when there is none.
+  const submits = all.filter((b) => (b as HTMLButtonElement).type === 'submit');
+  for (const group of [submits, all]) {
+    const texts = group.map(label);
+    if (texts.some((t) => SIGNIN_HINT.test(t)) && !texts.some((t) => SIGNUP_HINT.test(t))) return 'signin';
+    if (texts.some((t) => SIGNUP_HINT.test(t)) && !texts.some((t) => SIGNIN_HINT.test(t))) return 'signup';
+    if (group.length && texts.some((t) => SIGNIN_HINT.test(t))) return 'signin'; // mixed: never guess signup
+  }
+  const form = scope instanceof HTMLFormElement ? scope : null;
+  const headings = [...scope.querySelectorAll('h1, h2, h3, legend')].map((h) => h.textContent);
+  const page = [form?.id, form?.name, form?.getAttribute('aria-label'), form?.getAttribute('action'), ...headings];
+  if (SIGNUP_HINT.test(page.filter(Boolean).join(' '))) return 'signup';
+  if (scope === document && /\/(sign-?up|register|join|create-account)\b/i.test(location.pathname)) return 'signup';
+  return 'unknown';
+}
+
+/** A password field to generate for, and the field that confirms it (filled with the same value). */
+export type GenerateTarget = { field: HTMLInputElement; confirm?: HTMLInputElement };
+
+/**
+ * Where Safari shows the Triwarden generate icon: the new password of a sign-up, change-password or reset form, never
+ * an ordinary login (system AutoFill owns pick/fill there), never the old password, never the confirm field (it gets
+ * the same value). Save/Update still runs via `watchForSubmits`, with no icon at all.
+ */
+export function generateTargetFor(scope: ParentNode): GenerateTarget | null {
+  const passwords = visiblePasswords(scope);
+  if (!passwords.length) return null;
+  const isCurrent = (p: HTMLInputElement) =>
+    /current-password/.test(p.autocomplete || '') || (!/new-password/.test(p.autocomplete || '') && CURRENT_HINT.test(fieldText(p)));
+  const fresh = passwords.filter((p) => !isCurrent(p));
+  if (!fresh.length) return null;
+  const marked = fresh.filter((p) => /new-password/.test(p.autocomplete || ''));
+  // Anything after the new one that says "confirm", or simply the next fresh field.
+  const pick = (field: HTMLInputElement): GenerateTarget => {
+    const rest = fresh.slice(fresh.indexOf(field) + 1);
+    return { field, confirm: rest.find((p) => CONFIRM_HINT.test(fieldText(p))) ?? rest[0] };
+  };
+  const first = fresh.find((p) => !CONFIRM_HINT.test(fieldText(p))) ?? fresh[0]!;
+  if (marked.length) return pick(marked.find((p) => !CONFIRM_HINT.test(fieldText(p))) ?? marked[0]!);
+  // Two or more fields (new + confirm, or old + new + confirm) only happen when a password is being made.
+  if (passwords.length >= 2) return pick(first);
+  if (/current-password/.test(passwords[0]!.autocomplete || '')) return null;
+  return scopeIntent(scope) === 'signup' ? pick(first) : null;
+}
+
+/** Whether `pw` is the field the generate icon belongs on. */
+export function isGeneratePasswordField(pw: HTMLInputElement): boolean {
+  if (pw.type !== 'password' || !visible(pw)) return false;
+  return generateTargetFor(fieldScope(pw))?.field === pw;
+}
+
+/** Every place on the page to offer generate (Safari): one per form or group. */
+export function generateTargets(): GenerateTarget[] {
+  const scopes = new Set(passwordFields().filter(visible).map(fieldScope));
+  return [...scopes].map(generateTargetFor).filter((t): t is GenerateTarget => !!t);
+}
+
+/** Visible password fields that warrant a generate affordance (Safari). */
+export function generatePasswordFields(): HTMLInputElement[] {
+  return generateTargets().map((t) => t.field);
+}

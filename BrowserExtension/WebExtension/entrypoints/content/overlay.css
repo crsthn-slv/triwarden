@@ -4,6 +4,22 @@
    ever a fill (the app icon); text and symbols stay neutral. */
 :host {
   all: initial;
+  /* Viewport layer: WXT's 0×0 relative host + all:initial !important parks fixed menus at the origin in Safari. */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  display: block !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  transform: none !important;
+  filter: none !important;
   color-scheme: light dark;
   --ink: #1d1d1f; /* not CanvasText: that follows the page's colour scheme, and the menu follows the system's */
   /* Nearly opaque: unlike the app's glass, this sits over any page, and a page's colours must not tint it. */
@@ -12,6 +28,7 @@
   --wash: rgba(0, 0, 0, 0.055);
   --chip: rgba(0, 0, 0, 0.06);
   --tile: #fff;
+  --seg: #fff; /* the selected segment: lifted above the track, as in macOS */
   --shadow: 0 18px 40px rgba(20, 24, 60, 0.18), 0 2px 8px rgba(20, 24, 60, 0.08);
 }
 @media (prefers-color-scheme: dark) {
@@ -22,6 +39,7 @@
     --wash: rgba(255, 255, 255, 0.09);
     --chip: rgba(255, 255, 255, 0.1);
     --tile: #f5f5f7;
+    --seg: rgba(255, 255, 255, 0.2);
     --shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 }
@@ -32,7 +50,9 @@
 
 /* ---- The app icon inside a field ---- */
 .key {
-  position: fixed;
+  /* absolute inside the viewport-pinned host (fixed was resolving against WXT's 0×0 host in Safari). */
+  position: absolute;
+  pointer-events: auto;
   width: 22px;
   height: 22px;
   border: 0;
@@ -60,7 +80,8 @@
 
 /* ---- The menu ---- */
 .menu {
-  position: fixed;
+  position: absolute;
+  pointer-events: auto;
   width: 332px; /* keep in step with MENU_WIDTH in Overlay.tsx */
   max-width: calc(100vw - 16px);
   padding: 6px;
@@ -81,6 +102,13 @@
 /* Under a right-to-left field the menu lines up with the field's right edge, and springs from there. */
 .menu[data-rtl="true"] {
   transform-origin: top right;
+}
+/* Above the field (preferred so we do not sit under the system AutoFill panel): spring from the bottom edge. */
+.menu[data-above="true"] {
+  transform-origin: bottom left;
+}
+.menu[data-above="true"][data-rtl="true"] {
+  transform-origin: bottom right;
 }
 /* Names, usernames and messages take their own direction (dir="auto"), so Persian or Arabic reads right to left, but
    stay lined up with the menu's left edge like the rest. */
@@ -278,4 +306,499 @@
   .ring .arc {
     transition: none;
   }
+}
+
+/* ---- Suggested password (Safari generate menu): mirrors the app compact Generator ---- */
+
+/*
+ * Safari paints native Aqua chrome on <button>/<input type=range|checkbox> inside the closed
+ * shadow root unless appearance is cleared. :host { all: initial } does not reset form controls.
+ * Scope every control under .menu.gen and set -webkit-appearance: none.
+ */
+.menu.gen button,
+.menu.gen input {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.menu.gen .gen-drag {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.menu.gen[data-dragging="true"] .gen-drag {
+  cursor: grabbing;
+}
+.menu.gen[data-dragging="true"] {
+  transition: none;
+  animation: none;
+}
+
+.menu.gen {
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 8px 8px 10px;
+  box-sizing: border-box;
+}
+.menu.gen .group {
+  padding: 4px 8px 2px;
+  letter-spacing: 0.02em;
+}
+.menu.gen .gen-output {
+  margin: 4px 2px 0;
+  padding: 10px 10px 8px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  box-shadow: inset 0 0 0 0.5px var(--edge);
+}
+.menu.gen .gen-row {
+  height: auto;
+  min-height: 40px;
+  padding: 2px 0;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border-radius: 0;
+}
+.menu.gen .gen-row:hover,
+.menu.gen .gen-row[data-active="true"] {
+  background: transparent;
+}
+.menu.gen .gen-row[aria-disabled="true"] {
+  cursor: default;
+}
+.menu.gen .gen-value {
+  font: 500 13px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.01em;
+  word-break: break-all;
+  white-space: normal;
+  color: var(--ink);
+  transition: opacity 120ms ease;
+}
+.menu.gen .gen-value[data-updating="true"] {
+  opacity: 0.72;
+}
+.menu.gen .gen-value[data-loading="true"] {
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+.menu.gen .gen-value [data-c="digit"] {
+  color: #0a7aff;
+}
+.menu.gen .gen-value [data-c="symbol"] {
+  color: #d6336c;
+}
+@media (prefers-color-scheme: dark) {
+  .menu.gen .gen-value [data-c="digit"] {
+    color: #4da3ff;
+  }
+  .menu.gen .gen-value [data-c="symbol"] {
+    color: #ff6b9a;
+  }
+}
+
+.menu.gen .icon-btn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 160ms cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.menu.gen .icon-btn:hover {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  color: var(--ink);
+}
+.menu.gen .icon-btn:active {
+  transform: scale(0.94);
+}
+.menu.gen .icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.menu.gen .gen-strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+}
+.menu.gen .gen-strength-bars {
+  display: flex;
+  gap: 3px;
+  width: 120px;
+}
+.menu.gen .gen-strength-bars span {
+  flex: 1;
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  transition: background-color 160ms ease;
+}
+.menu.gen .gen-strength-bars span[data-on="true"] {
+  background: #34c759;
+}
+.menu.gen .gen-strength-bars[data-level="1"] span[data-on="true"] {
+  background: #ff3b30;
+}
+.menu.gen .gen-strength-bars[data-level="2"] span[data-on="true"] {
+  background: #ff9500;
+}
+.menu.gen .gen-strength-label {
+  font: 500 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+/* Sliding thumb like AppSegmented — one pill translates instead of swapping backgrounds. */
+.menu.gen .gen-kinds {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  margin: 8px 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--chip);
+}
+.menu.gen .gen-kinds-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 6px) / 2); /* 2px pad each side + 2px gap */
+  border-radius: 7px;
+  background: var(--seg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 0.5px var(--edge);
+  pointer-events: none;
+  z-index: 0;
+  transform: translateX(0);
+  transition: transform 280ms cubic-bezier(0.2, 1.05, 0.4, 1);
+}
+.menu.gen .gen-kinds[data-kind="passphrase"] .gen-kinds-thumb {
+  transform: translateX(calc(100% + 2px));
+}
+.menu.gen .gen-kinds button {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  font: 500 12px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition: color 200ms ease, font-weight 200ms ease;
+}
+.menu.gen .gen-kinds button[data-on="true"] {
+  color: var(--ink);
+  font-weight: 600;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Tab body: short cross-fade + nudge when Password ↔ Passphrase mounts. */
+.menu.gen .gen-tab-pane {
+  animation: gen-tab-in 220ms cubic-bezier(0.2, 1.05, 0.4, 1);
+}
+.menu.gen .gen-tab-pane[data-kind="passphrase"] {
+  animation-name: gen-tab-in-left;
+}
+@keyframes gen-tab-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gen-tab-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu.gen .gen-kinds-thumb {
+    transition: none;
+  }
+  .menu.gen .gen-tab-pane {
+    animation: none;
+  }
+}
+
+.menu.gen .gen-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 4px 0;
+  padding: 2px 2px 0;
+}
+.menu.gen .gen-opt-label {
+  display: block;
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  margin: 0 0 6px;
+}
+.menu.gen .gen-opt-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.menu.gen .gen-opt-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.menu.gen .gen-opt-row > .gen-opt-label {
+  margin: 0;
+  min-width: 64px;
+  flex: none;
+}
+
+/* Custom range — Safari's native track is a bright white slab in dark mode.
+   --pct (0–100%) drives the filled portion so the thumb matches the bound value. */
+.menu.gen .gen-slider {
+  --pct: 0%;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+.menu.gen .gen-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 99px;
+  background: linear-gradient(
+    to right,
+    #80c5ef 0%,
+    #80c5ef var(--pct),
+    color-mix(in srgb, var(--ink) 14%, transparent) var(--pct),
+    color-mix(in srgb, var(--ink) 14%, transparent) 100%
+  );
+}
+.menu.gen .gen-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #80c5ef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  border: 0;
+  /* Keep the thumb above the track fill so Safari's hit-target matches the drawn circle. */
+  position: relative;
+  z-index: 1;
+}
+.menu.gen .gen-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+.menu.gen .gen-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 99px;
+  background: #80c5ef;
+}
+.menu.gen .gen-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #80c5ef;
+  border: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.menu.gen .gen-stepper {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  border-radius: 8px;
+  background: var(--chip);
+  box-shadow: inset 0 0 0 0.5px var(--edge);
+  overflow: hidden;
+  flex: none;
+  height: 28px;
+}
+.menu.gen .gen-stepper button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 600 14px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.menu.gen .gen-stepper button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.menu.gen .gen-stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.menu.gen .gen-stepper span {
+  min-width: 28px;
+  text-align: center;
+  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink);
+}
+
+.menu.gen .gen-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.menu.gen .gen-chip {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 0;
+  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+.menu.gen .gen-chip[data-on="true"] {
+  color: #0b2a40;
+  background: #80c5ef;
+  box-shadow: none;
+}
+.menu.gen .gen-chip:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.menu.gen .gen-chip[data-on="true"]:hover {
+  background: #96d0f3;
+}
+
+.menu.gen .gen-mins {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 20px;
+  width: 100%;
+}
+.menu.gen .gen-min {
+  /* Shrink-wrap: do not stretch a half-width empty column beside the stepper. */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.menu.gen .gen-min[data-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* App-like trailing switch (no native checkbox chrome). */
+.menu.gen .gen-switch {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 28px;
+}
+.menu.gen .gen-toggle {
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+.menu.gen .gen-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 140ms ease;
+}
+.menu.gen .gen-toggle[data-on="true"] {
+  background: #0f74b3;
+}
+.menu.gen .gen-toggle[data-on="true"]::after {
+  transform: translateX(16px);
+}
+
+.menu.gen .gen-sep {
+  width: 56px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  text-align: center;
+  font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink);
+  background: var(--chip);
+  box-shadow: inset 0 0 0 0.5px var(--edge);
+  padding: 0 8px;
+}
+
+.menu.gen .gen-use {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 8px);
+  margin: 12px 4px 2px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: #fff;
+  background: #0f74b3;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 116, 179, 0.35);
+}
+.menu.gen .gen-use:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+.menu.gen .gen-use:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+.menu.gen .gen-use:not(:disabled):active {
+  transform: scale(0.98);
 }

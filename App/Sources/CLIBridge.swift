@@ -190,7 +190,7 @@ final class CLIBridge {
 
     private func handle(_ request: CLIRequest, peer: FramedSocketServer.Peer) async -> CLIResponse {
         guard let model else { return .failure("Triwarden is quitting.") }
-        let browserCommand = [.match, .fill, .save, .copy].contains(request.command)
+        let browserCommand = [.match, .fill, .save, .copy, .generate].contains(request.command)
         if browserCommand { noteBrowser(request) }
         let enabled = UserDefaults.standard.bool(forKey: browserCommand ? Pref.browser : Pref.cli) || approveOverride != nil
         guard enabled else {
@@ -297,9 +297,22 @@ final class CLIBridge {
                 ? "unlocked · \(model.sessions.count) account(s) · \(model.items.filter { !$0.isDeleted && !$0.isArchived }.count) items"
                 : "locked")
         case .generate:
+            // `field: passphrase` (or query) asks for a diceware phrase; otherwise a password. Works while locked.
+            // Optional charset / passphrase fields mirror the app Generator and persist into the same UserDefaults keys.
+            let wantsPhrase = (request.field ?? request.query)?.lowercased() == "passphrase"
+            if wantsPhrase {
+                var phrase = UserDefaults.standard.data(forKey: "passphraseGenerator")
+                    .flatMap { try? JSONDecoder().decode(PassphraseGenerator.self, from: $0) } ?? PassphraseGenerator()
+                let touched = Self.applyPassphraseOptions(&phrase, from: request)
+                if touched { UserDefaults.standard.set(try? JSONEncoder().encode(phrase), forKey: "passphraseGenerator") }
+                let value = rememberGenerated(phrase.generate(), kind: "passphrase", for: request, model: model)
+                return Self.generateReply(value: value, passphrase: phrase)
+            }
             var generator = PasswordGenerator.saved
-            if let length = request.length { generator.length = min(max(length, 8), 128) }
-            return .success(generator.generate())
+            let touched = Self.applyPasswordOptions(&generator, from: request)
+            if touched { UserDefaults.standard.set(try? JSONEncoder().encode(generator), forKey: "generator") }
+            let value = rememberGenerated(generator.generate(), kind: "password", for: request, model: model)
+            return Self.generateReply(value: value, password: generator)
         case .lock:
             model.lock()
             return .success("locked")
@@ -326,6 +339,62 @@ final class CLIBridge {
             guard await approve(String(localized: "read \(what) of “\(item.name)”"), peer: peer) else { return .failure(Self.denied) }
             return .success(value)
         }
+    }
+
+    /// Apply password options from a generate request. Returns whether any field was set (so the prefs should be saved).
+    private static func applyPasswordOptions(_ generator: inout PasswordGenerator, from request: CLIRequest) -> Bool {
+        var touched = false
+        if let length = request.length {
+            generator.length = min(max(length, PasswordGenerator.lengthRange.lowerBound), PasswordGenerator.lengthRange.upperBound)
+            touched = true
+        }
+        if let v = request.uppercase { generator.uppercase = v; touched = true }
+        if let v = request.lowercase { generator.lowercase = v; touched = true }
+        if let v = request.digits { generator.digits = v; touched = true }
+        if let v = request.symbols { generator.symbols = v; touched = true }
+        if let v = request.avoidAmbiguous { generator.avoidAmbiguous = v; touched = true }
+        if let v = request.minNumbers { generator.minNumbers = min(max(v, 0), 9); touched = true }
+        if let v = request.minSpecial { generator.minSpecial = min(max(v, 0), 9); touched = true }
+        return touched
+    }
+
+    /// Apply passphrase options from a generate request. Returns whether any field was set.
+    private static func applyPassphraseOptions(_ phrase: inout PassphraseGenerator, from request: CLIRequest) -> Bool {
+        var touched = false
+        if let words = request.length {
+            phrase.words = min(max(words, PassphraseGenerator.wordRange.lowerBound), PassphraseGenerator.wordRange.upperBound)
+            touched = true
+        }
+        if let sep = request.separator {
+            phrase.separator = String(sep.prefix(3))
+            touched = true
+        }
+        if let v = request.capitalize { phrase.capitalize = v; touched = true }
+        if let v = request.includeNumber { phrase.includeNumber = v; touched = true }
+        return touched
+    }
+
+    private static func generateReply(value: String, password: PasswordGenerator) -> CLIResponse {
+        CLIResponse(ok: true, value: value, length: password.length, uppercase: password.uppercase,
+                    lowercase: password.lowercase, digits: password.digits, symbols: password.symbols,
+                    avoidAmbiguous: password.avoidAmbiguous, minNumbers: password.minNumbers,
+                    minSpecial: password.minSpecial, entropyBits: password.entropyBits)
+    }
+
+    private static func generateReply(value: String, passphrase: PassphraseGenerator) -> CLIResponse {
+        CLIResponse(ok: true, value: value, length: passphrase.words, separator: passphrase.separator,
+                    capitalize: passphrase.capitalize, includeNumber: passphrase.includeNumber,
+                    entropyBits: passphrase.entropyBits)
+    }
+
+    /// A value generated for a web page goes into the Generator's history (with the page's site), so it isn't lost when
+    /// the page navigates before the save offer, or the offer is dismissed. `tw generate` in a terminal is not kept:
+    /// it prints the value where the person already has it.
+    private func rememberGenerated(_ value: String, kind: String, for request: CLIRequest, model: AppModel) -> String {
+        if let site = GeneratorHistory.site(fromPageURL: request.url) {
+            model.rememberGenerated(value, kind: kind, site: site)
+        }
+        return value
     }
 
     static let locked = "The vault is locked. Unlock Triwarden first."

@@ -2,7 +2,7 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import { browser } from 'wxt/browser';
 import { send } from '../../lib/send';
 import { fillOtp, isRTL, otpTargets, passwordFields, setValue, usernameFor, visible } from '../../lib/dom';
-import { iconPosition, menuLeft } from '../../lib/overlay-layout';
+import { iconPosition, menuLeft, menuVertical } from '../../lib/overlay-layout';
 import type { Row } from '../../lib/protocol';
 import { AppMark } from './AppMark';
 
@@ -90,12 +90,9 @@ export default function Overlay() {
   let root!: HTMLDivElement;
   let asking = 0; // bumped on every ask and every close, so an answer that arrives late is dropped
   let autoShow: boolean | undefined; // the app's Browser setting, learned from its answers
-  let autoCheckedAt = 0; // when the app last told us
   let autoOpened = false; // the menu opened by itself on focus: it must not take Enter from the page
   let navigated = false; // arrow keys moved the highlight, so Enter means "fill this one"
-  let autoPausedUntil = 0; // the app didn't answer: don't ask again on every focus
   let filling = false; // we are putting values in fields: that moves focus, and must not open the menu again
-  const offered = new WeakSet<HTMLInputElement>(); // fields already offered suggestions while focused
 
   const close = () => {
     asking++;
@@ -164,26 +161,38 @@ export default function Overlay() {
     return iconPosition(r, rtl, false);
   };
 
-  /** Where the menu sits: under its field, or over it when the space below is too small; kept inside the window. */
-  const menuStyle = (m: Menu) => {
-    tick(); // scroll and resize move the field, and the menu goes with it
-    const f = m.target.field;
-    if (!f.isConnected) return { display: 'none' };
-    const r = f.getBoundingClientRect();
+  const menuHeight = (m: Menu) => {
     const shown = m.state === 'rows' ? Math.min(m.rows.length, MAX_ROWS) : 1;
     const groups = m.state === 'rows' && new Set(m.rows.map(groupOf)).size > 1 && !m.target.otp ? 2 : 0;
-    const height = shown * ROW_HEIGHT + groups * 24 + 12 + (m.auto && m.state === 'rows' ? HINT_HEIGHT : 0);
-    const below = innerHeight - r.bottom - 12;
+    return shown * ROW_HEIGHT + groups * 24 + 12 + (m.auto && m.state === 'rows' ? HINT_HEIGHT : 0);
+  };
+
+  /** Where the menu sits: prefer above the field (system AutoFill owns the space below); kept inside the window. */
+  const menuPlace = (m: Menu) => {
+    tick(); // scroll and resize move the field, and the menu goes with it
+    const f = m.target.field;
+    if (!f.isConnected) return null;
+    const r = f.getBoundingClientRect();
     const wide = m.target.otp ? CODE_MENU_WIDTH : MENU_WIDTH;
     // Lined up with the field's start: its left edge, or its right edge when the field is right to left.
     const left = menuLeft(r, wide, isRTL(f), innerWidth);
-    const width = `${wide}px`;
-    return below >= height || r.top < below ? { left, width, top: `${r.bottom + 6}px` } : { left, width, bottom: `${innerHeight - r.top + 6}px` };
+    const vertical = menuVertical(r, menuHeight(m), innerHeight);
+    return { left, width: `${wide}px`, vertical };
   };
+
+  const menuStyle = (m: Menu) => {
+    const place = menuPlace(m);
+    if (!place) return { display: 'none' };
+    const { left, width, vertical } = place;
+    // Always `top` + clear `bottom`: never CSS `bottom` (Safari/WXT mis-resolve it on overlay hosts).
+    return { left, width, top: vertical.top, bottom: 'auto' };
+  };
+
+  const menuAbove = (m: Menu) => menuPlace(m)?.vertical.above ?? false;
 
   /**
    * `click`: the icon in the field. `direct`: the keyboard shortcut, which fills at once when exactly one login matches.
-   * `auto`: the field was focused; stays silent unless the app's setting is on and there is something to offer.
+   * `auto`: kept for the app's "show on focus" setting, but focus no longer opens the menu (system AutoFill collision).
    */
   async function open(target: Target, mode: 'click' | 'direct' | 'auto' = 'click') {
     const auto = mode === 'auto';
@@ -194,12 +203,8 @@ export default function Overlay() {
     // Digits only when asked for: a field that merely took focus gets names and countdowns, never the code.
     const reply = await send({ command: 'match', codes: !!target.otp && !auto, reveal: !!target.otp && !auto });
     if (mine !== asking) return; // closed, or a newer ask took over
-    if (reply.autoShow !== undefined) {
-      autoShow = reply.autoShow;
-      autoCheckedAt = Date.now();
-    }
+    if (reply.autoShow !== undefined) autoShow = reply.autoShow;
     if (auto) {
-      if (!reply.ok) autoPausedUntil = Date.now() + 10_000;
       if (!reply.ok || !autoShow) return;
     } else if (!reply.ok) {
       return setMenu({ ...base, state: 'note', note: reply.error || "Triwarden isn't available." });
@@ -223,20 +228,18 @@ export default function Overlay() {
   }
 
   /**
-   * Offer suggestions for the focused field, if it is one of ours. Returns whether it is. Also called after every scan:
-   * a field that was focused before we looked (autofocus, a form that appeared under the cursor) fires no focus event.
+   * Whether the focused element is one of our fill targets. Also called after every scan: a field that was focused
+   * before we looked (autofocus, a form that appeared under the cursor) fires no focus event.
+   *
+   * Does not open the suggestion menu on focus. Safari and Chrome draw their system AutoFill panel under the field
+   * in the browser/OS layer, which always covers our shadow UI — so focus stays icon-only. Click the in-field mark
+   * or use the keyboard shortcut / right-click menu to open Triwarden's list (placed above the field when possible).
    */
   function offerFor(el: Element | null): boolean {
     const t = targets().find((x) => x.field === el || x.otp?.includes(el as HTMLInputElement));
     if (!t) return false;
-    // Focus moved to another field: the menu follows. (Compare the fields: a rescan makes new Target objects.)
+    // An auto-opened menu (legacy path) still follows focus between our fields.
     if (menu()?.auto && menu()!.target.field !== t.field) close();
-    if (filling || menu() || offered.has(t.field) || Date.now() < autoPausedUntil) return true;
-    // While the setting is off, look again every few seconds: turning it on in the app should work on pages that
-    // are already open, without asking the app on every single focus.
-    if (autoShow === false && Date.now() - autoCheckedAt < 5000) return true;
-    offered.add(t.field);
-    void open(t, 'auto');
     return true;
   }
 
@@ -270,9 +273,7 @@ export default function Overlay() {
       const code = otpTargets()[0];
       if (filled.totp && code) fillOtp(code, filled.totp);
     } finally {
-      // Focus events from the fill arrive synchronously; give them a moment, then listen again. Fields we just filled
-      // count as offered, so they stay quiet until the person leaves and comes back.
-      for (const el of document.querySelectorAll('input')) offered.add(el);
+      // Focus events from the fill arrive synchronously; give them a moment, then listen again.
       setTimeout(() => (filling = false), 400);
     }
   }
@@ -318,11 +319,10 @@ export default function Overlay() {
         else close();
       }
     };
-    // Focus: open the suggestions when the app's setting asks for it; moving to any other field closes them.
+    // Focus: track whether the field is ours (icon stays); moving off an auto-opened menu closes it.
     const focused = (e: FocusEvent) => {
       if (!offerFor(e.target as Element) && autoOpened) close();
     };
-    const left = (e: FocusEvent) => offered.delete(e.target as HTMLInputElement);
     // Frames with nothing to fill stay quiet, so the background can ask every frame of the tab.
     const asked = (message: unknown, _sender: unknown, reply: (value: unknown) => void) => {
       const m = message as { trigger?: string; row?: string; ask?: string } | null;
@@ -339,7 +339,6 @@ export default function Overlay() {
     document.addEventListener('mousedown', outside, true);
     document.addEventListener('keydown', keys, true);
     document.addEventListener('focusin', focused, true);
-    document.addEventListener('focusout', left, true);
     onCleanup(() => {
       clearTimeout(timer);
       browser.runtime.onMessage.removeListener(asked);
@@ -349,7 +348,6 @@ export default function Overlay() {
       document.removeEventListener('mousedown', outside, true);
       document.removeEventListener('keydown', keys, true);
       document.removeEventListener('focusin', focused, true);
-      document.removeEventListener('focusout', left, true);
     });
   });
 
@@ -380,7 +378,7 @@ export default function Overlay() {
           };
           const mixed = () => !m().target.otp && new Set(m().rows.map(groupOf)).size > 1;
           return (
-            <div class="menu" role="menu" style={menuStyle(m())} data-rtl={isRTL(m().target.field)}>
+            <div class="menu" role="menu" style={menuStyle(m())} data-rtl={isRTL(m().target.field)} data-above={menuAbove(m())}>
               <Show when={m().state === 'rows'} fallback={<div class="note" dir="auto">{m().note}</div>}>
                 <div class="list">
                   <For each={m().rows}>

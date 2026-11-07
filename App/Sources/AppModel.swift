@@ -837,13 +837,12 @@ final class AppModel {
     }
 
     /// Generated values the user copied or used, newest first. Memory only; cleared on lock.
-    struct GeneratedEntry: Identifiable { let id = UUID(); let value: String; let kind: String; let date: Date }
+    typealias GeneratedEntry = GeneratorHistoryEntry
     var generatorHistory: [GeneratedEntry] = []
 
-    func rememberGenerated(_ value: String, kind: String) {
-        guard !value.isEmpty, generatorHistory.first?.value != value else { return }
-        generatorHistory.insert(GeneratedEntry(value: value, kind: kind, date: .now), at: 0)
-        if generatorHistory.count > 50 { generatorHistory.removeLast() }
+    /// `site`: the page the browser extension generated it for, if any.
+    func rememberGenerated(_ value: String, kind: String, site: String? = nil) {
+        generatorHistory = GeneratorHistory.remembering(value, kind: kind, site: site, in: generatorHistory)
     }
 
     static let mainWindowID = "main"
