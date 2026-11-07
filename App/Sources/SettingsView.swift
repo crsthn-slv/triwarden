@@ -277,6 +277,7 @@ private struct GeneralSettings: View {
     @AppStorage(Pref.closeToMenuBar) private var closeToMenuBar = false
     @AppStorage(Pref.matchFrontTab) private var matchFrontTab = false
     @AppStorage(Pref.rememberPalettePosition) private var rememberPalettePosition = false
+    @AppStorage(Pref.newItemSiteOnly) private var newItemSiteOnly = false
 
     var body: some View {
         Form {
@@ -372,6 +373,15 @@ private struct GeneralSettings: View {
                     Text("Turning this on does not grant access by itself. The next time the menu bar or command palette opens over a browser, macOS asks to let Triwarden control that browser. The system says this Automation permission can reach documents and data and perform actions there. That describes the permission, which is broader than this request. Triwarden asks one question: the address of the front tab. Each browser asks once. Don't Allow leaves the rest of Triwarden working; that browser's tab is not matched. Turning this off stops the question. To remove a permission already given, use System Settings › Privacy & Security › Automation.")
                 }
                 .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Save new logins with the site address only", isOn: $newItemSiteOnly)
+            } header: {
+                Text("New logins")
+            } footer: {
+                Text("Off by default. When on, saving a new login keeps just the site, for example https://example.com instead of https://example.com/login?next=…. The page path and anything after ? or # are dropped; http or https stays as entered. Some sign-ins need the full address, so editing a saved login never changes it. While editing, the Site only button next to a website does this for one address.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section {
