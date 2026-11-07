@@ -82,6 +82,13 @@
 .menu[data-rtl="true"] {
   transform-origin: top right;
 }
+/* Above the field (preferred so we do not sit under the system AutoFill panel): spring from the bottom edge. */
+.menu[data-above="true"] {
+  transform-origin: bottom left;
+}
+.menu[data-above="true"][data-rtl="true"] {
+  transform-origin: bottom right;
+}
 /* Names, usernames and messages take their own direction (dir="auto"), so Persian or Arabic reads right to left, but
    stay lined up with the menu's left edge like the rest. */
 .note,
