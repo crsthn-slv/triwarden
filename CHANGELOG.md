@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/sinhong2011/triwarden/compare/v0.9.0...v0.9.1) (2026-11-09)
+
+
+### Fixes
+
+* **browser:** distinguish bridge-down failures and clean up cli.sock ([#193](https://github.com/sinhong2011/triwarden/issues/193)) ([36e1824](https://github.com/sinhong2011/triwarden/commit/36e18248da6250ca350515827f56a07fb38a0a1c)), closes [#192](https://github.com/sinhong2011/triwarden/issues/192)
+* **ci:** waive extension release commits in tag anchor check ([#190](https://github.com/sinhong2011/triwarden/issues/190)) ([84aec5f](https://github.com/sinhong2011/triwarden/commit/84aec5fc8409105d0b7ade75bce08f376b1f9f13))
+
 ## [0.9.0](https://github.com/sinhong2011/triwarden/compare/v0.8.1...v0.9.0) (2026-11-07)
 
 
