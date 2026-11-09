@@ -510,6 +510,8 @@ private struct BrowserSettings: View {
     /// Browsers whose store page was opened from here, so the row moves on to Connect (the app cannot see what is installed in a browser).
     @AppStorage("browserInstallOpened") private var installOpened = Data()
     @State private var problem: String?
+    /// Offer Open at login once when Browser is turned on and it is not already registered.
+    @State private var askOpenAtLogin = false
 
     private var tool: String { CLIBridge.toolPath }
 
@@ -517,7 +519,10 @@ private struct BrowserSettings: View {
         Form {
             Section {
                 Toggle("Allow the browser extension", isOn: $browserEnabled)
-                    .onChange(of: browserEnabled) { model.cli.refreshRunning() }
+                    .onChange(of: browserEnabled) { _, on in
+                        model.cli.refreshRunning()
+                        if on { enableOpenAtLoginForBrowser() }
+                    }
                 Toggle("Show suggestions when a field is focused", isOn: $autoShow)
                     .disabled(!browserEnabled)
                 Picker("Ask before filling", selection: $approvalSeconds) {
@@ -530,7 +535,7 @@ private struct BrowserSettings: View {
             } header: {
                 Text("Browser extension")
             } footer: {
-                Text("Suggestions show names only; filling asks for Touch ID, saving asks you first.")
+                Text("Suggestions show names only; filling asks for Touch ID, saving asks you first. The extension only works while Triwarden is running — turning this on also turns on Open at login (change that anytime in General).")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -557,6 +562,19 @@ private struct BrowserSettings: View {
         .scrollContentBackground(.hidden)
         .thinScroller()
         .onAppear(perform: refresh)
+        .confirmationDialog("Open Triwarden at login?", isPresented: $askOpenAtLogin, titleVisibility: .visible) {
+            Button("Open at login") {
+                do {
+                    try SMAppService.mainApp.register()
+                    problem = nil
+                } catch {
+                    problem = error.localizedDescription
+                }
+            }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Triwarden could not turn on Open at login automatically. The browser extension only works while the app is running — turn this on so it stays available after a restart.")
+        }
     }
 
     @ViewBuilder private func row(_ browser: NativeHost.Browser) -> some View {
@@ -580,6 +598,19 @@ private struct BrowserSettings: View {
             }
         } label: {
             Text(verbatim: browser.title)
+        }
+    }
+
+    /// Browser integration dies when the app is quit; register Open at login so a reboot/update does not leave Safari silent.
+    /// Falls back to a confirmation if `SMAppService` refuses (user can still choose Not now).
+    private func enableOpenAtLoginForBrowser() {
+        guard SMAppService.mainApp.status != .enabled else { return }
+        do {
+            try SMAppService.mainApp.register()
+            problem = nil
+        } catch {
+            problem = error.localizedDescription
+            askOpenAtLogin = true
         }
     }
 
