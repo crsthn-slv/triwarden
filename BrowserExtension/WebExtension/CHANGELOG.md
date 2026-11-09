@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/sinhong2011/triwarden/compare/extension-v0.4.2...extension-v0.4.3) (2026-11-09)
+
+
+### Fixes
+
+* **browser:** distinguish bridge-down failures and clean up cli.sock ([#193](https://github.com/sinhong2011/triwarden/issues/193)) ([36e1824](https://github.com/sinhong2011/triwarden/commit/36e18248da6250ca350515827f56a07fb38a0a1c)), closes [#192](https://github.com/sinhong2011/triwarden/issues/192)
+
 ## [0.4.2](https://github.com/sinhong2011/triwarden/compare/extension-v0.4.1...extension-v0.4.2) (2026-11-07)
 
 
