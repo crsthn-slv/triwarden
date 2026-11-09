@@ -46,6 +46,7 @@ public enum NativeHost {
         .init(id: "edge", title: "Microsoft Edge", bundleID: "com.microsoft.edgemac", family: .chromium, dataFolder: "Microsoft Edge", hostFolder: "Microsoft Edge/NativeMessagingHosts"),
         .init(id: "brave", title: "Brave", bundleID: "com.brave.Browser", family: .chromium, dataFolder: "BraveSoftware/Brave-Browser", hostFolder: "BraveSoftware/Brave-Browser/NativeMessagingHosts"),
         .init(id: "arc", title: "Arc", bundleID: "company.thebrowser.Browser", family: .chromium, dataFolder: "Arc/User Data", hostFolder: "Arc/User Data/NativeMessagingHosts"),
+        .init(id: "zen", title: "Zen", bundleID: "app.zen-browser.zen", family: .firefox, dataFolder: "zen", hostFolder: "zen/NativeMessagingHosts"),
         .init(id: "firefox", title: "Firefox", bundleID: "org.mozilla.firefox", family: .firefox, dataFolder: "Firefox", hostFolder: "Mozilla/NativeMessagingHosts"),
     ]
 
