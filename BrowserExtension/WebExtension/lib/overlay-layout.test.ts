@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyMenuDrag,
   generateMenuPlace,
@@ -8,6 +9,7 @@ import {
   menuVertical,
   menuVerticalGenerate,
   pinOverlayHost,
+  pinToTopLayer,
   SYSTEM_AUTOFILL_ICON_CLEARANCE,
 } from './overlay-layout';
 
@@ -126,5 +128,64 @@ describe('applyMenuDrag', () => {
   it('keeps the dragged menu inside the viewport', () => {
     expect(applyMenuDrag(100, 200, 900, 900, 300, 140, vp)).toEqual({ left: '692px', top: '652px' });
     expect(applyMenuDrag(100, 200, -500, -500, 300, 140, vp)).toEqual({ left: '8px', top: '8px' });
+  });
+});
+
+describe('pinToTopLayer', () => {
+  /** jsdom has no Popover API: a host that records show/hide stands in for it. */
+  function fakeHost() {
+    const host = document.createElement('div') as unknown as HTMLElement & { open: boolean };
+    host.open = false;
+    host.showPopover = vi.fn(() => void (host.open = true));
+    host.hidePopover = vi.fn(() => void (host.open = false));
+    host.matches = ((sel: string) => (sel === ':popover-open' ? host.open : false)) as typeof host.matches;
+    return host;
+  }
+  const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+
+  it('does nothing where the Popover API is missing', () => {
+    const host = document.createElement('div');
+    expect(() => pinToTopLayer(host)()).not.toThrow();
+    expect(host.hasAttribute('popover')).toBe(false);
+  });
+
+  it('shows the host as a manual popover and raises it again when the page opens a popover or dialog', async () => {
+    const host = fakeHost();
+    const unpin = pinToTopLayer(host);
+    expect(host.getAttribute('popover')).toBe('manual');
+    expect(host.showPopover).toHaveBeenCalledTimes(1);
+
+    const page = document.createElement('div');
+    document.body.append(page);
+    const toggle = new Event('toggle');
+    Object.assign(toggle, { newState: 'open' });
+    page.dispatchEvent(toggle); // toggle does not bubble but the listener is a capture one on document
+    await frame();
+    expect(host.hidePopover).toHaveBeenCalledTimes(1);
+    expect(host.showPopover).toHaveBeenCalledTimes(2);
+
+    const dialog = document.createElement('dialog');
+    document.body.append(dialog);
+    dialog.setAttribute('open', '');
+    await new Promise((r) => setTimeout(r, 0));
+    await frame();
+    expect(host.showPopover).toHaveBeenCalledTimes(3);
+
+    unpin();
+    page.dispatchEvent(toggle);
+    await frame();
+    expect(host.showPopover).toHaveBeenCalledTimes(3);
+  });
+
+  it('ignores its own toggle', async () => {
+    const host = fakeHost();
+    document.body.append(host);
+    const unpin = pinToTopLayer(host);
+    const toggle = new Event('toggle');
+    Object.assign(toggle, { newState: 'open' });
+    host.dispatchEvent(toggle);
+    await frame();
+    expect(host.showPopover).toHaveBeenCalledTimes(1);
+    unpin();
   });
 });

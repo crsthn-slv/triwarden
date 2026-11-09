@@ -15,9 +15,12 @@
   display: block !important;
   overflow: visible !important;
   pointer-events: none !important;
+  /* Above page fields: WXT puts its z-index on an inner wrapper, so a focused Bootstrap input (z-index: 3) covered the icon. */
+  z-index: 2147483647 !important;
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
+  background: transparent !important; /* the popover (top layer) UA style paints Canvas */
   transform: none !important;
   filter: none !important;
   color-scheme: light dark;
