@@ -35,9 +35,14 @@ public struct CLIRequest: Codable, Sendable, Equatable {
     public var includeNumber: Bool?
     /// `match`: also return each login's current one-time code. Only a code field asks for this.
     public var codes: Bool?
-    /// `match` with `codes`: the person asked for them (clicked the icon, pressed the shortcut). A field that merely
-    /// took focus does not set this, and gets no codes.
+    /// `match`: the person asked (clicked the icon, pressed the shortcut). A field that merely took focus does not
+    /// set this. With `codes`, this also returns the digits.
     public var reveal: Bool?
+    /// `match`: the person asked Triwarden to fill (icon, shortcut). While locked, the app brings its window
+    /// forward so they can unlock. Background `match` (rebuilding the right-click menu) does not set this.
+    public var foreground: Bool?
+    /// `match`: rebuilding the right-click menu — do not open unlock while locked.
+    public var silent: Bool?
     /// `fill`: `false` when the extension filled an OTP field (do not also copy). `true` or omitted copies
     /// when Settings › Browser › “Copy one-time code after filling a login” is on. The extension never
     /// writes the clipboard itself.
@@ -55,13 +60,15 @@ public struct CLIRequest: Codable, Sendable, Equatable {
                 avoidAmbiguous: Bool? = nil, minNumbers: Int? = nil, minSpecial: Int? = nil,
                 separator: String? = nil, capitalize: Bool? = nil, includeNumber: Bool? = nil,
                 url: String? = nil, username: String? = nil, password: String? = nil, codes: Bool? = nil,
-                reveal: Bool? = nil, copyTotp: Bool? = nil, origin: String? = nil, browser: String? = nil) {
+                reveal: Bool? = nil, foreground: Bool? = nil, silent: Bool? = nil, copyTotp: Bool? = nil,
+                origin: String? = nil, browser: String? = nil) {
         self.command = command; self.query = query; self.field = field; self.length = length
         self.uppercase = uppercase; self.lowercase = lowercase; self.digits = digits; self.symbols = symbols
         self.avoidAmbiguous = avoidAmbiguous; self.minNumbers = minNumbers; self.minSpecial = minSpecial
         self.separator = separator; self.capitalize = capitalize; self.includeNumber = includeNumber
         self.url = url; self.username = username; self.password = password; self.codes = codes; self.reveal = reveal
-        self.copyTotp = copyTotp; self.origin = origin; self.browser = browser
+        self.foreground = foreground; self.silent = silent; self.copyTotp = copyTotp
+        self.origin = origin; self.browser = browser
     }
 }
 
@@ -102,7 +109,7 @@ public struct CLIResponse: Codable, Sendable, Equatable {
     public var totpCopied: Bool?
     public var rows: [Row]?
     public var error: String?
-    /// Machine-readable reason when `ok` is false: `app_not_running`, `connection_disabled`, …
+    /// Machine-readable reason when `ok` is false: `app_not_running`, `connection_disabled`, `vault_locked`, …
     public var code: String?
     /// `match`: whether the Browser setting "Show suggestions when a field is focused" is on. The extension keeps it.
     public var autoShow: Bool?

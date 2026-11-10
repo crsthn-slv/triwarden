@@ -25,6 +25,7 @@
     "hintFill": "fill",
     "hintClose": "close",
     "codeValidFor": "Code valid for $1 more seconds",
+    "openToUnlock": "Open Triwarden",
     "codeCopied": "Code copied"
   },
 

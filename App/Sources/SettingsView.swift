@@ -501,6 +501,7 @@ private struct BrowserSettings: View {
     @Environment(AppModel.self) private var model
     @AppStorage(Pref.browser) private var browserEnabled = false
     @AppStorage(Pref.browserAutoShow) private var autoShow = true
+    @AppStorage(Pref.browserUnlock) private var unlockIn = "window"
     @AppStorage(Pref.browserCopyTotpAfterFill) private var copyTotpAfterFill = false
     @AppStorage(Pref.browserApprovalSeconds) private var approvalSeconds = 600
     /// The browsers on this Mac and whether each is connected. Read from the manifests on disk; refreshed after a connect.
@@ -535,10 +536,19 @@ private struct BrowserSettings: View {
                     Text("Until Triwarden locks").tag(-1)
                 }
                 .disabled(!browserEnabled)
+                LabeledContent("When locked, unlock in") {
+                    AppSegmented(options: [
+                        ("window", "Window"),
+                        ("palette", "Palette"),
+                        ("menuBar", "Menu bar"),
+                    ], selection: $unlockIn, compact: true)
+                    .frame(width: 248)
+                }
+                .disabled(!browserEnabled)
             } header: {
                 Text("Browser extension")
             } footer: {
-                Text("Suggestions show names only; filling asks for Touch ID, saving asks you first. “Copy one-time code after filling” puts the code on the clipboard when the page has no code field — same approval, clears on the usual timer. The extension only works while Triwarden is running — turning this on also turns on Open at login (change that anytime in General).")
+                Text("Suggestions show names only; filling asks for Touch ID, saving asks you first. When the vault is locked, filling opens the window, the command palette, or the menu bar panel so you can unlock and try again. “Copy one-time code after filling” puts the code on the clipboard when the page has no code field — same approval, clears on the usual timer. The extension only works while Triwarden is running — turning this on also turns on Open at login (change that anytime in General).")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
