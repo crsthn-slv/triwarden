@@ -2,7 +2,7 @@
 // Safari: generate + save + a bridge-down toast on ordinary login fields (system AutoFill owns vault pick/fill).
 // Chrome / Firefox / Edge: vault suggestions/fill overlay + save.
 import { render } from 'solid-js/web';
-import { pinOverlayHost } from '../../lib/overlay-layout';
+import { pinOverlayHost, pinToTopLayer } from '../../lib/overlay-layout';
 import { vaultFillInOverlay } from '../../lib/runtime';
 import { watchForSubmits } from '../../lib/save';
 import BridgeDownBanner from './BridgeDownBanner';
@@ -44,7 +44,11 @@ export default defineContentScript({
         const root = container.getRootNode();
         const host = root instanceof ShadowRoot ? (root.host as HTMLElement) : null;
         if (host) pinOverlayHost(host, container);
-        return dispose;
+        const unpin = host ? pinToTopLayer(host) : undefined;
+        return () => {
+          unpin?.();
+          dispose();
+        };
       },
       onRemove: (dispose) => dispose?.(),
     });

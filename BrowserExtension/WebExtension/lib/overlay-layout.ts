@@ -160,6 +160,7 @@ export function pinOverlayHost(host: HTMLElement, container?: HTMLElement | null
     transform: 'none',
     filter: 'none',
     'pointer-events': 'none',
+    'z-index': '2147483647',
   };
   for (const [key, value] of Object.entries(hostPin)) {
     host.style.setProperty(key, value, 'important');
@@ -179,4 +180,51 @@ export function pinOverlayHost(host: HTMLElement, container?: HTMLElement | null
   for (const [key, value] of Object.entries(boxPin)) {
     container.style.setProperty(key, value, 'important');
   }
+}
+
+/**
+ * Put the overlay host in the browser's top layer (`popover="manual"`), above every page stacking context, so no
+ * page `z-index` (a focused Bootstrap field, a sticky header) can cover the icon. Where the Popover API is missing,
+ * the host's max `z-index` still applies. The top layer is ordered by when each element entered it, so when the page
+ * puts something there later (a popover, a modal `<dialog>`, fullscreen) the host is raised again. Returns a cleanup.
+ */
+export function pinToTopLayer(host: HTMLElement): () => void {
+  if (typeof host.showPopover !== 'function') return () => {};
+  host.setAttribute('popover', 'manual');
+  const raise = () => {
+    try {
+      if (host.matches(':popover-open')) host.hidePopover();
+      host.showPopover();
+    } catch {
+      // the page changed the attribute or detached the host; the next mount pins it again
+    }
+  };
+  let queued = false;
+  const queue = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      raise();
+    });
+  };
+  // A toggle from the host itself (our own raise) must not trigger another raise.
+  const onToggle = (e: Event) => {
+    if (e.target !== host && (e as ToggleEvent).newState === 'open') queue();
+  };
+  // `<dialog>.showModal()` does not fire `toggle` in every engine: watch the `open` attribute too.
+  const dialogs = new MutationObserver((records) => {
+    if (records.some((r) => (r.target as Element).localName === 'dialog' && (r.target as Element).hasAttribute('open'))) {
+      queue();
+    }
+  });
+  raise();
+  document.addEventListener('toggle', onToggle, true);
+  document.addEventListener('fullscreenchange', queue);
+  dialogs.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['open'] });
+  return () => {
+    document.removeEventListener('toggle', onToggle, true);
+    document.removeEventListener('fullscreenchange', queue);
+    dialogs.disconnect();
+  };
 }
