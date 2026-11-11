@@ -62,7 +62,7 @@ extension ButtonStyle where Self == AppButtonStyle {
 }
 
 /// Icon and tile buttons that draw their own look (the menu bar panel's): a soft wash in their shape on hover, a
-/// deeper one and a slight press while pressed, and the keyboard focus ring in the same shape.
+/// deeper one and a slight press while pressed, the pointing hand, and the keyboard focus ring in the same shape.
 struct HoverButtonStyle: ButtonStyle {
     var shape = AnyShape(.circle)
 
@@ -81,6 +81,7 @@ struct HoverButtonStyle: ButtonStyle {
                 .scaleEffect(configuration.isPressed && Motion.animation(.default) != nil ? 0.96 : 1)
                 .contentShape(shape)
                 .contentShape(.focusEffect, shape)
+                .pointerStyle(.link)
                 .onHover { hovering = $0 }
                 .animation(Motion.animation(.snappy(duration: 0.15)), value: hovering)
                 .animation(Motion.animation(.snappy(duration: 0.15)), value: configuration.isPressed)

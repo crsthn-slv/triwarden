@@ -483,6 +483,7 @@ private struct QuickRow: View {
         .contentShape(.rect)
         .onTapGesture(perform: activate)
         .onHover { inside in withAnimation(.snappy(duration: 0.15)) { hovering = inside } }
+        .pointerStyle(.link)
         // Reachable by Tab; Return or Space does what a click does. The ring follows the row's rounded shape.
         .contentShape(.focusEffect, .rect(cornerRadius: 11, style: .continuous))
         .focusable()
