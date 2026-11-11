@@ -109,6 +109,7 @@ struct MenuBarContent: View {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 13)).foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
+                .help(Text("Clear"))
                 .accessibilityLabel(Text("Clear"))
             }
         }
@@ -250,9 +251,8 @@ private struct CircleButton: View {
                 .frame(width: 36, height: 36)
                 .background(Color.menuCard, in: .circle)
                 .overlay(Circle().strokeBorder(Color.menuEdge))
-                .contentShape(.circle)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hover)
         .help(Text(help))
         .accessibilityLabel(Text(help))
     }
@@ -268,9 +268,9 @@ private struct FooterButton: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 12, weight: .medium))
                 .symbolEffect(.rotate, isActive: spinning)
-                .frame(width: 26, height: 26).contentShape(.circle)
+                .frame(width: 28, height: 28)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hover)
         .foregroundStyle(.secondary)
         .help(Text(help))
         .accessibilityLabel(Text(help))
@@ -294,11 +294,10 @@ private struct CopyIcon: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(done ? Color.primary : .secondary)
                 .contentTransition(.symbolEffect(.replace))
-                .frame(width: 26, height: 26)
+                .frame(width: 28, height: 28)
                 .background(Color.primary.opacity(0.06), in: .circle)
-                .contentShape(.circle)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hover)
         .help(Text(help))
         .accessibilityLabel(Text(help))
     }
@@ -360,7 +359,7 @@ private struct SiteCard: View {
                             Text(context.host != nil ? "On \(context.label)" : "For \(context.label)")
                                 .font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                             Spacer()
-                            Text("Click to fill").font(.system(size: 10)).foregroundStyle(.tertiary)
+                            Text("Click to fill").font(.system(size: 11)).foregroundStyle(.secondary)
                         }
                         .padding(.horizontal, 8).padding(.top, 2)
                         VStack(spacing: 0) {
@@ -552,7 +551,7 @@ private struct SearchResults: View {
                     ForEach(results) { QuickRow(item: $0) }
                     Text(model.foreground != nil && results.first.map { QuickCopy.canFill($0, model) } == true
                          ? "Return fills the first login · hover for more" : "Return copies the first password · hover for more")
-                        .font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 6)
+                        .font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 6)
                 }
             }
         }
@@ -592,7 +591,7 @@ private struct QuickActions: View {
                     .frame(height: 18)
                     .overlay(alignment: .topTrailing) {
                         if badge > 0 {
-                            Text(verbatim: "\(badge)").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                            Text(verbatim: "\(badge)").font(.system(size: 10, weight: .bold)).foregroundStyle(.black) // black on orange reads at about 10:1; white was 2:1
                                 .padding(.horizontal, 4).frame(minWidth: 15, minHeight: 15)
                                 .background(Color.orange, in: .capsule)
                                 .fixedSize() // its own width: laid out in the icon's, "56" came out as "5…"
@@ -605,10 +604,8 @@ private struct QuickActions: View {
             .background(Color.menuCard, in: .rect(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.menuEdge))
             .shadow(color: .menuShadow, radius: 5, y: 1)
-            .contentShape(.rect)
-            .contentShape(.focusEffect, .rect(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hover(cornerRadius: 14))
         .accessibilityLabel(Text(title))
         .accessibilityValue(badge > 0 ? Text("^[\(badge) issue](inflect: true)") : Text(verbatim: ""))
     }
@@ -647,11 +644,10 @@ private struct GeneratorCard: View {
                     Button { showGenerator = true } label: {
                         Image(systemName: "dice").font(.system(size: 12, weight: .medium))
                             .foregroundStyle(showGenerator ? Color.primary : .secondary)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 28, height: 28)
                             .background(Color.primary.opacity(showGenerator ? 0.12 : 0.06), in: .circle)
-                            .contentShape(.circle)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.hover)
                     .help(Text("Generator options: length, characters and more"))
                     .accessibilityLabel(Text("Generator options"))
                     .popover(isPresented: $showGenerator, arrowEdge: .trailing) {

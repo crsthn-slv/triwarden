@@ -61,6 +61,40 @@ extension ButtonStyle where Self == AppButtonStyle {
     static var appDestructive: AppButtonStyle { AppButtonStyle(kind: .destructive) }
 }
 
+/// Icon and tile buttons that draw their own look (the menu bar panel's): a soft wash in their shape on hover, a
+/// deeper one and a slight press while pressed, and the keyboard focus ring in the same shape.
+struct HoverButtonStyle: ButtonStyle {
+    var shape = AnyShape(.circle)
+
+    func makeBody(configuration: Configuration) -> some View {
+        Hoverable(configuration: configuration, shape: shape)
+    }
+
+    private struct Hoverable: View {
+        let configuration: Configuration
+        let shape: AnyShape
+        @State private var hovering = false
+
+        var body: some View {
+            configuration.label
+                .overlay(shape.fill(Color.primary.opacity(configuration.isPressed ? 0.12 : hovering ? 0.06 : 0)))
+                .scaleEffect(configuration.isPressed && Motion.animation(.default) != nil ? 0.96 : 1)
+                .contentShape(shape)
+                .contentShape(.focusEffect, shape)
+                .onHover { hovering = $0 }
+                .animation(Motion.animation(.snappy(duration: 0.15)), value: hovering)
+                .animation(Motion.animation(.snappy(duration: 0.15)), value: configuration.isPressed)
+        }
+    }
+}
+
+extension ButtonStyle where Self == HoverButtonStyle {
+    static var hover: HoverButtonStyle { HoverButtonStyle() }
+    static func hover(cornerRadius: CGFloat) -> HoverButtonStyle {
+        HoverButtonStyle(shape: AnyShape(.rect(cornerRadius: cornerRadius, style: .continuous)))
+    }
+}
+
 /// A switch at the end of its row, like the app's other inputs (label on the left, control on the right).
 struct TrailingSwitchStyle: ToggleStyle {
     var size: ControlSize = .small

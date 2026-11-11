@@ -1440,5 +1440,10 @@ struct StrengthMeter: View {
                 .animation(.snappy, value: level.0)
             Spacer()
         }
+        // One element for VoiceOver: "Strength, Very strong" rather than four bars and a loose word.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Strength"))
+        .accessibilityValue(Text(level.1))
+        .accessibilityAddTraits(.isStaticText)
     }
 }
