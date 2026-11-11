@@ -132,7 +132,7 @@ struct MenuBarContent: View {
             }
             // The state word only on hover: the dot already says it, and the row stays quiet the rest of the time.
             // Trouble (a sync error) always shows, hover or not.
-            statusText
+            Text(verbatim: statusString)
             .accessibilityHidden(true)
             .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
             .fixedSize()
@@ -161,8 +161,6 @@ struct MenuBarContent: View {
         .onHover { hovering in footerHovering = hovering }
         .animation(.easeOut(duration: 0.18), value: footerLabelShown)
     }
-
-    private var statusText: Text { Text(verbatim: statusString) }
 
     private var statusString: String {
         if model.isSyncing { return String(localized: "Syncing…") }

@@ -364,7 +364,7 @@ final class ButtonTests: XCTestCase {
         XCTAssertEqual(clipboard(), generated, "Copy did not copy the shown value")
 
         for mode in ["Passphrase", "Username", "Password"] {
-            window.buttons[mode].firstMatch.click()
+            window.radioButtons[mode].firstMatch.click() // AppSegmented reads as a segmented control
             button("Copy").click()
             XCTAssertFalse((clipboard() ?? "").isEmpty, "\(mode) mode copied nothing")
         }
