@@ -29,21 +29,6 @@ export function menuLeft(box: Pick<Box, 'left' | 'right'>, width: number, rtl: b
   return `${Math.max(8, Math.min(start, viewportWidth - width - 8))}px`;
 }
 
-/**
- * Horizontal place for a menu that belongs to the in-field icon: the menu's trailing edge meets the
- * icon's trailing edge (LTR ends at the icon; RTL starts at it), so it reads as that icon's panel.
- */
-export function menuLeftNearIcon(
-  iconLeft: number,
-  width: number,
-  rtl: boolean,
-  viewportWidth: number,
-  iconSize = ICON_SIZE,
-) {
-  const start = rtl ? iconLeft : iconLeft + iconSize - width;
-  return `${Math.max(8, Math.min(start, viewportWidth - width - 8))}px`;
-}
-
 export type MenuVertical = {
   /** CSS `top` from the viewport. Always set — never `bottom`. */
   top: string;
@@ -98,8 +83,8 @@ export function menuVerticalGenerate(
 }
 
 /**
- * The generate menu (Safari): tied to the new-password field's icon, and never over the confirm
- * field. Horizontally it ends at the icon (`menuLeftNearIcon`). Vertically: above the new password
+ * The generate menu: tied to the new-password field, and never over the confirm field. Horizontally it starts
+ * with the field, like the username menu and the vault fill menu (`menuLeft`). Vertically: above the new password
  * when it fits; otherwise below the confirm (or the new password when there is none).
  */
 export function generateMenuPlace(
@@ -111,11 +96,8 @@ export function generateMenuPlace(
   rtl: boolean,
   gap = 6,
 ): { left: string; vertical: MenuVertical } {
-  const iconLeft = Number.parseFloat(
-    iconPosition({ ...field, height: field.bottom - field.top }, rtl, false).left,
-  );
   return {
-    left: menuLeftNearIcon(iconLeft, width, rtl, viewport.width),
+    left: menuLeft(field, width, rtl, viewport.width),
     vertical: menuVerticalGenerate(field, confirm, height, viewport.height, gap),
   };
 }

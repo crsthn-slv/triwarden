@@ -52,7 +52,8 @@ final class CLIBridge {
     /// Logins the browser extension saw you submit, newest last. They wait in the bell, the menu bar panel and a
     /// banner for Save or Not Now; nothing is written until you answer. Kept in memory only and dropped on lock.
     private(set) var pendingSaves: [PendingLoginSave] = []
-    /// Site + username pairs you said Not Now to. They stay quiet until the vault locks.
+    /// Attempts (site + username + password) you said Not Now to. They stay quiet until the vault locks; a new password
+    /// for the same login asks again.
     private var declinedSaves: Set<String> = []
     /// A save arrived since the vault window was last brought forward: bringing it forward opens the bell.
     var revealSavesOnActivate = false
@@ -140,11 +141,16 @@ final class CLIBridge {
         case .update(let id, let name): existing = (id, name)
         }
         let key = PendingLoginSave.key(host: host, username: username)
-        guard !declinedSaves.contains(key) else { return "skipped" }
-        // One entry per site and username: a retry after a typo replaces the first attempt instead of piling up.
-        let replaced = pendingSaves.filter { $0.key == key }
-        if let same = replaced.first, same.password == password, same.existingID == existing?.id { return "pending" }
-        pendingSaves.removeAll { $0.key == key }
+        // Not Now puts away that attempt only: the same login with a new password asks again.
+        guard !declinedSaves.contains(key + "\u{0}" + password) else { return "skipped" }
+        // One entry per site and username: a retry after a typo replaces the first attempt instead of piling up. The same
+        // password under another username on the site is the same attempt with the username edited (offered when a
+        // suggested password was used, then again on submit), so it replaces too.
+        let replaced = pendingSaves.filter { $0.key == key || ($0.host == host && $0.password == password) }
+        if let same = replaced.first(where: { $0.key == key }), same.password == password, same.existingID == existing?.id {
+            return "pending"
+        }
+        pendingSaves.removeAll { old in replaced.contains { $0.id == old.id } }
         LoginSaveNotifier.withdraw(replaced.map(\.id))
         let pending = PendingLoginSave(host: host, scheme: scheme, username: username, password: password,
                                        existingID: existing?.id, existingName: existing?.name)
@@ -169,7 +175,7 @@ final class CLIBridge {
         LoginSaveNotifier.withdraw([pending.id])
         if pendingSaves.isEmpty { revealSavesOnActivate = false }
         guard save else {
-            declinedSaves.insert(pending.key)
+            declinedSaves.insert(pending.key + "\u{0}" + pending.password)
             return true
         }
         guard let model, model.isUnlocked else { return false }
@@ -193,7 +199,7 @@ final class CLIBridge {
 
     private func handle(_ request: CLIRequest, peer: FramedSocketServer.Peer) async -> CLIResponse {
         guard let model else { return .failure("Triwarden is quitting.") }
-        let browserCommand = [.match, .fill, .save, .copy, .generate].contains(request.command)
+        let browserCommand = [.match, .fill, .save, .copy, .generate, .pending].contains(request.command)
         if browserCommand { noteBrowser(request) }
         let enabled = UserDefaults.standard.bool(forKey: browserCommand ? Pref.browser : Pref.cli) || approveOverride != nil
         guard enabled else {
@@ -310,6 +316,28 @@ final class CLIBridge {
             let username = (request.username ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return .success(queueSave(host: host, scheme: url.scheme ?? "https", username: username, password: password,
                                       items: model.items))
+        case .pending:
+            // The page's own save prompt: same waiting logins as the bell, for this site only, and only our extension.
+            guard Self.isOwnBinary(peer) else { return .failure("Unknown client.") }
+            guard model.isUnlocked else { return .failure(Self.locked) }
+            guard let host = request.url.flatMap(URL.init(string:))?.host()?.lowercased() else { return .list([]) }
+            guard let id = request.query else {
+                return .list(pendingSaves.filter { $0.host == host }.map {
+                    CLIResponse.Row(id: $0.id, name: $0.existingName ?? "", detail: $0.username)
+                })
+            }
+            guard let pending = pendingSaves.first(where: { $0.id == id && $0.host == host }) else {
+                return .failure("Already answered in Triwarden.")
+            }
+            let save = request.field == "save"
+            // Replacing a saved password from a page is approved like a fill: a page script could submit its own form.
+            if save, let name = pending.existingName {
+                guard await approve(String(localized: "update the password of “\(name)”"), peer: peer, browser: true) else {
+                    return .failure(Self.denied)
+                }
+            }
+            return await answerSave(id, save: save)
+                ? .success("done") : .failure("Couldn't save it. It's still waiting in Triwarden.")
         case .status:
             return .success(model.isUnlocked
                 ? "unlocked · \(model.sessions.count) account(s) · \(model.items.filter { !$0.isDeleted && !$0.isArchived }.count) items"
@@ -317,7 +345,21 @@ final class CLIBridge {
         case .generate:
             // `field: passphrase` (or query) asks for a diceware phrase; otherwise a password. Works while locked.
             // Optional charset / passphrase fields mirror the app Generator and persist into the same UserDefaults keys.
-            let wantsPhrase = (request.field ?? request.query)?.lowercased() == "passphrase"
+            let kind = (request.field ?? request.query)?.lowercased()
+            if kind == "username" || kind == "email" {
+                // A sign-up's username / email field: a new one from the Generator's username prefs (an email field
+                // gets a private address even when the prefs say random word), plus your own emails for our extension
+                // only, and only while unlocked.
+                var gen = UserDefaults.standard.data(forKey: "usernameGenerator")
+                    .flatMap { try? JSONDecoder().decode(UsernameGenerator.self, from: $0) } ?? UsernameGenerator()
+                let emails = Self.isOwnBinary(peer) && model.isUnlocked ? SignUpEmails.ranked(accounts: model.sessions.map(\.account.email), usernames: model.items
+                    .filter { $0.kind == .login && !$0.isDeleted && !$0.isArchived }.compactMap(\.username)) : []
+                if gen.email.isEmpty { gen.email = emails.first ?? "" }
+                if kind == "email", gen.kind == .randomWord { gen.kind = .plusAddressed }
+                return CLIResponse(ok: true, value: gen.generate(),
+                                   rows: emails.map { CLIResponse.Row(id: $0, name: $0, detail: "") })
+            }
+            let wantsPhrase = kind == "passphrase"
             if wantsPhrase {
                 var phrase = UserDefaults.standard.data(forKey: "passphraseGenerator")
                     .flatMap { try? JSONDecoder().decode(PassphraseGenerator.self, from: $0) } ?? PassphraseGenerator()

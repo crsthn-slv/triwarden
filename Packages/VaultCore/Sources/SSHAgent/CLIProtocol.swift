@@ -11,6 +11,10 @@ public struct CLIRequest: Codable, Sendable, Equatable {
         /// Browser extension: copy one field of a login (`field`: username, password or totp) to the clipboard. The app
         /// does the copying, so the value never reaches the extension.
         case copy
+        /// Browser extension: the logins waiting to be saved for the page's site (rows: id, `name` = the login it
+        /// updates or empty for a new one, `detail` = username), shown in the page. With `query` (a row id) it answers
+        /// that one: `field` "save" saves it, anything else is Not Now.
+        case pending
     }
     public var command: Command
     public var query: String?

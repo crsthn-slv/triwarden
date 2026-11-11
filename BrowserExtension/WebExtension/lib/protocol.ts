@@ -55,8 +55,10 @@ export type Reply = {
   value?: string;
 } & GeneratorOptions;
 
-export type Command = 'match' | 'fill' | 'save' | 'copy' | 'generate';
-export const COMMANDS: ReadonlySet<string> = new Set<Command>(['match', 'fill', 'save', 'copy', 'generate']);
+/** `pending`: logins waiting to be saved for this site (rows: `name` = login it updates, `detail` = username); with
+ *  `query` (a row id) answers it, `field: 'save'` saves, anything else is Not Now. */
+export type Command = 'match' | 'fill' | 'save' | 'copy' | 'generate' | 'pending';
+export const COMMANDS: ReadonlySet<string> = new Set<Command>(['match', 'fill', 'save', 'copy', 'generate', 'pending']);
 
 export type Request = {
   command: Command;

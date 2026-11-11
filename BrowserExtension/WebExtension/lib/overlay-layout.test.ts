@@ -5,7 +5,6 @@ import {
   generateMenuPlace,
   iconPosition,
   menuLeft,
-  menuLeftNearIcon,
   menuVertical,
   menuVerticalGenerate,
   pinOverlayHost,
@@ -44,12 +43,6 @@ describe('overlay placement', () => {
     expect(menuLeft({ left: 700, right: 900 }, 332, true, 800)).toBe('460px');
   });
 
-  it('anchors the menu to the icon trailing edge', () => {
-    // icon at 200, width 280 → LTR left = 200 + 22 - 280 = -58 → clamped to 8
-    expect(menuLeftNearIcon(200, 280, false, 1200)).toBe('8px');
-    expect(menuLeftNearIcon(400, 280, false, 1200)).toBe('142px'); // 400 + 22 - 280
-    expect(menuLeftNearIcon(400, 280, true, 1200)).toBe('400px');
-  });
 
   it('prefers the menu above the field when there is room (system AutoFill owns below)', () => {
     const mid = { top: 400, bottom: 442 };
@@ -75,11 +68,10 @@ describe('generateMenuPlace', () => {
   const field = { left: 100, right: 400, top: 300, bottom: 340 };
   const confirm = { left: 100, right: 400, top: 360, bottom: 400 };
 
-  it('sits above the new password when it fits, ending at the icon', () => {
+  it('sits above the new password when it fits, starting with the field', () => {
     const p = generateMenuPlace(field, confirm, 280, 110, viewport, false);
     expect(p.vertical).toEqual({ top: `${300 - 6 - 110}px`, above: true });
-    const iconLeft = 400 - 30 - SYSTEM_AUTOFILL_ICON_CLEARANCE;
-    expect(p.left).toBe(menuLeftNearIcon(iconLeft, 280, false, 1200));
+    expect(p.left).toBe('100px');
   });
 
   it('goes below the confirm field, never over it, when there is no room above', () => {
