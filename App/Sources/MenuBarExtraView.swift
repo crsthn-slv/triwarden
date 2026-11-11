@@ -84,6 +84,7 @@ struct MenuBarContent: View {
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             TextField("Search vault", text: $query)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
@@ -102,6 +103,7 @@ struct MenuBarContent: View {
                 }
                 .buttonStyle(.plain)
                 .help(Text("Open the command palette"))
+                .accessibilityLabel(Text("Open the command palette"))
             } else {
                 Button { query = "" } label: {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 13)).foregroundStyle(.tertiary)
@@ -118,24 +120,17 @@ struct MenuBarContent: View {
 
     private var footer: some View {
         HStack(spacing: 6) {
+            // The dot carries the state for VoiceOver too: the word beside it is hidden until hover.
             TimelineView(.periodic(from: .now, by: 30)) { _ in
                 Circle().fill(model.isOnline ? Color.green : Color.secondary).frame(width: 7, height: 7)
-            }.accessibilityHidden(true)
+                    .accessibilityElement()
+                    .accessibilityLabel(Text(verbatim: statusSpoken))
+                    .accessibilityAddTraits(.isStaticText)
+            }
             // The state word only on hover: the dot already says it, and the row stays quiet the rest of the time.
             // Trouble (a sync error) always shows, hover or not.
-            Group {
-                if model.isSyncing {
-                    Text("Syncing…")
-                } else if model.hasSyncError {
-                    Text("Couldn't sync")
-                } else if let synced = model.lastSynced {
-                    Text("Synced \(synced.formatted(.relative(presentation: .named)))")
-                } else if model.isSignedOut {
-                    Text("Not signed in")
-                } else {
-                    Text(model.hasOpenVault ? "Offline · saved vault" : "Locked")
-                }
-            }
+            statusText
+            .accessibilityHidden(true)
             .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
             .fixedSize()
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { footerLabelWidth = $0 }
@@ -162,6 +157,23 @@ struct MenuBarContent: View {
         .contentShape(.rect)
         .onHover { hovering in footerHovering = hovering }
         .animation(.easeOut(duration: 0.18), value: footerLabelShown)
+    }
+
+    private var statusText: Text { Text(verbatim: statusString) }
+
+    private var statusString: String {
+        if model.isSyncing { return String(localized: "Syncing…") }
+        if model.hasSyncError { return String(localized: "Couldn't sync") }
+        if let synced = model.lastSynced { return String(localized: "Synced \(synced.formatted(.relative(presentation: .named)))") }
+        if model.isSignedOut { return String(localized: "Not signed in") }
+        return model.hasOpenVault ? String(localized: "Offline · saved vault") : String(localized: "Locked")
+    }
+
+    /// What VoiceOver reads on the dot: the state word, "Offline" when the dot says so and the word doesn't, and the server.
+    private var statusSpoken: String {
+        let offlineWord = !model.isOnline && (model.lastSynced != nil || model.isSyncing || model.hasSyncError)
+        return ([offlineWord ? String(localized: "Offline") : nil, statusString, model.serverDisplayName] as [String?])
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }
 
@@ -343,7 +355,7 @@ private struct SiteCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             if let icon = NSRunningApplication(processIdentifier: context.pid)?.icon {
-                                Image(nsImage: icon).resizable().frame(width: 14, height: 14)
+                                Image(nsImage: icon).resizable().frame(width: 14, height: 14).accessibilityHidden(true)
                             }
                             Text(context.host != nil ? "On \(context.label)" : "For \(context.label)")
                                 .font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
@@ -415,6 +427,10 @@ private struct QuickRow: View {
     /// A click types the login into the app the panel was opened over (the site card), rather than copying.
     var fillsOnClick = false
     @State private var hovering = false
+    /// Keyboard focus on the row reveals its buttons, as hover does. The row is one Tab stop; its buttons stay off
+    /// the Tab loop (Return and the Item menu shortcuts cover them, VoiceOver gets them as actions).
+    @FocusState private var focused: Bool
+    private var revealed: Bool { hovering || focused }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -426,19 +442,23 @@ private struct QuickRow: View {
                 }
             }
             Spacer(minLength: 6)
-            if hovering {
+            if revealed {
                 HStack(spacing: 4) {
                     if QuickCopy.canFill(item, model), !fillsOnClick, let context = model.foreground {
                         CopyIcon(symbol: "keyboard", help: "Fill into \(context.app)") { QuickCopy.fill(item, model) }
+                            .focusable(false)
                     }
                     if let username = item.username {
                         CopyIcon(symbol: "person", help: "Copy Username") { model.copy(username, label: String(localized: "Username")) }
+                            .focusable(false)
                     }
-                    if let password = item.password {
+                    if item.password != nil {
                         CopyIcon(symbol: "key", help: "Copy Password") { model.copyPassword(item) }
+                            .focusable(false)
                     }
                     if let host = item.host, let url = URL(string: "https://\(host)") {
                         CopyIcon(symbol: "arrow.up.right", help: "Open Website") { NSWorkspace.shared.open(url) }
+                            .focusable(false)
                     }
                 }
                 .transition(.opacity.combined(with: .move(edge: .trailing)))
@@ -448,31 +468,65 @@ private struct QuickRow: View {
                     // On the app's shared clock: only the code and ring refresh, never the list around them.
                     HStack(spacing: 8) {
                         LiveOTPCode(totp: totp, size: 14)
-                        LiveCountdownRing(totp: totp, size: 22)
+                        LiveCountdownRing(totp: totp, size: 22).accessibilityHidden(true)
                     }
                     .fixedSize() // the code keeps its width; the name truncates instead
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .help(Text("Copy code"))
+                .accessibilityLabel(Text("Copy code"))
+                .focusable(false)
             }
         }
         .padding(.horizontal, 8).frame(height: 44)
-        .background(hovering ? Color.primary.opacity(0.05) : .clear, in: .rect(cornerRadius: 11, style: .continuous))
+        .background(revealed ? Color.primary.opacity(0.05) : .clear, in: .rect(cornerRadius: 11, style: .continuous))
         .contentShape(.rect)
-        .onTapGesture {
-            if fillsOnClick, QuickCopy.canFill(item, model) {
-                QuickCopy.fill(item, model)
-            } else if preferCode, let totp = item.totp {
-                model.guarded(item) { model.copy(totp.code(), label: String(localized: "Code")) }
-            } else {
-                QuickCopy.primary(item, model)
+        .onTapGesture(perform: activate)
+        .onHover { inside in withAnimation(.snappy(duration: 0.15)) { hovering = inside } }
+        // Reachable by Tab; Return or Space does what a click does. The ring follows the row's rounded shape.
+        .contentShape(.focusEffect, .rect(cornerRadius: 11, style: .continuous))
+        .focusable()
+        .focused($focused)
+        .onKeyPress(keys: [.return, .space]) { _ in activate(); return .handled }
+        // The Item menu's copy shortcuts (⇧⌘C, ⌥⌘C, ⌃⌘C) follow the focused row: the hover buttons without a Tab stop each.
+        .onChange(of: focused) { _, now in
+            if now { model.panelFocusedItem = item } else if model.panelFocusedItem?.id == item.id { model.panelFocusedItem = nil }
+        }
+        .animation(.snappy(duration: 0.15), value: focused)
+        .appContextMenu(model.itemContextActions(item))
+        // One element for VoiceOver: activating it does the click; copy, open and fill are its actions.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: item.name))
+        .accessibilityValue(Text(verbatim: item.username ?? ""))
+        .accessibilityHint(Text(hint))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(.default, activate)
+        .accessibilityActions {
+            if QuickCopy.canFill(item, model), !fillsOnClick, let context = model.foreground {
+                Button("Fill into \(context.app)") { QuickCopy.fill(item, model) }
             }
         }
-        .onHover { inside in withAnimation(.snappy(duration: 0.15)) { hovering = inside } }
-        .appContextMenu(model.itemContextActions(item))
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(verbatim: item.name))
+    }
+
+    /// What a click (or Return, or VoiceOver's activate) does.
+    private func activate() {
+        if fillsOnClick, QuickCopy.canFill(item, model) {
+            QuickCopy.fill(item, model)
+        } else if preferCode, let totp = item.totp {
+            model.guarded(item) { model.copy(totp.code(), label: String(localized: "Code")) }
+        } else {
+            QuickCopy.primary(item, model)
+        }
+    }
+
+    private var hint: LocalizedStringKey {
+        if fillsOnClick, QuickCopy.canFill(item, model), let context = model.foreground { return "Fills the login into \(context.app)" }
+        if preferCode, item.totp != nil { return "Copies the code" }
+        if item.password != nil { return "Copies the password" }
+        if item.totp != nil { return "Copies the code" }
+        if item.username != nil { return "Copies the username" }
+        return ""
     }
 }
 
@@ -552,6 +606,7 @@ private struct QuickActions: View {
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.menuEdge))
             .shadow(color: .menuShadow, radius: 5, y: 1)
             .contentShape(.rect)
+            .contentShape(.focusEffect, .rect(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(title))
@@ -609,7 +664,9 @@ private struct GeneratorCard: View {
                 ColoredSecret(value: value, separator: passphrase ? phrase.separator : nil)
                     .font(.system(size: 13, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel(Text(verbatim: value))
+                    .accessibilityLabel(passphrase ? Text("Generated passphrase") : Text("Generated password"))
+                    .accessibilityValue(Text(verbatim: value))
+                    .accessibilityAddTraits(.isStaticText)
                 HStack(spacing: 6) {
                     StrengthMeter(bits: passphrase ? phrase.entropyBits : password.entropyBits)
                     Spacer(minLength: 8)
@@ -644,6 +701,7 @@ private struct SSHRow: View {
                 HStack(spacing: 10) {
                         // Plain glyph, no tile: the panel's other rows don't decorate their icons either.
                         Image(systemName: "terminal").font(.system(size: 14, weight: .medium))
+                            .accessibilityHidden(true)
                             .foregroundStyle(.secondary)
                             .frame(width: 22)
                         VStack(alignment: .leading, spacing: 1) {

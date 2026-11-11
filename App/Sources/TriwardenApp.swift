@@ -175,7 +175,7 @@ struct TriwardenApp: App {
                     .disabled(model.sessions.isEmpty)
             }
             CommandMenu("Item") {
-                let item = model.selectedItem
+                let item = model.panelFocusedItem ?? model.selectedItem
                 Button("Edit") { if let item { model.guarded(item) { model.beginEditing(EditRequest(mode: .edit(item))) } } }
                     .keyboardShortcut("e", modifiers: .command)
                     .disabled(item?.isSupported != true || item?.isDeleted == true)
