@@ -102,6 +102,7 @@ struct MenuBarContent: View {
                     ShortcutKeycaps(keys: (Shortcut.current(for: .palette) ?? .paletteDefault).parts)
                 }
                 .buttonStyle(.plain)
+                .pointerStyle(.link)
                 .help(Text("Open the command palette"))
                 .accessibilityLabel(Text("Open the command palette"))
             } else {
@@ -109,6 +110,7 @@ struct MenuBarContent: View {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 13)).foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
+                .pointerStyle(.link)
                 .help(Text("Clear"))
                 .accessibilityLabel(Text("Clear"))
             }
@@ -872,9 +874,8 @@ private struct LockedCard: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 28, height: 28)
                 .background(Color.primary.opacity(0.07), in: .circle)
-                .contentShape(.circle)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hover)
         .disabled(model.isBusy)
         .help(Text("Unlock with Touch ID"))
         .accessibilityLabel(Text("Unlock with Touch ID"))
@@ -889,6 +890,7 @@ private struct LockedCard: View {
             focused = true
         }
         .buttonStyle(.plain).foregroundStyle(.secondary)
+        .pointerStyle(.link)
     }
 
     private func submit() {
@@ -970,6 +972,7 @@ private struct AccountMenu: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .pointerStyle(.link)
         .menuIndicator(.hidden)
         .fixedSize()
         .help(Text(focused?.email ?? String(localized: "All accounts")))

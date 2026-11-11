@@ -42,6 +42,7 @@ struct AppButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed && Motion.animation(.default) != nil ? 0.97 : 1)
             .animation(Motion.animation(.snappy(duration: 0.15)), value: configuration.isPressed)
             .contentShape(.capsule)
+            .pointerStyle(.link)
     }
 
     private func foreground(_ dark: Bool, _ kind: Kind) -> Color {
@@ -189,6 +190,7 @@ struct AppSegmented<Value: Hashable>: View {
                         .contentShape(.capsule)
                 }
                 .buttonStyle(.plain)
+                .pointerStyle(.link)
                 .focusable(false) // the whole control is one Tab stop; arrows move the selection
             }
         }
