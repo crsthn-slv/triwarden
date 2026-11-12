@@ -98,6 +98,9 @@
     "save": "Save",
     "update": "Update",
     "saved": "Saved to Triwarden.",
+    "savedTo": "Saved to $1.",
+    "toAccount": "Saves to $1",
+    "chooseAccount": "Save to account",
     "updated": "Password updated."
   }
 }

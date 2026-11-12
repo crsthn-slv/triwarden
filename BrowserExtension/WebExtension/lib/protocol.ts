@@ -15,6 +15,8 @@ export type Row = {
   exact?: boolean;
   /** The login also holds a passkey. The extension still fills its password: passkey sign-in is the app's. */
   passkey?: boolean;
+  /** `pending`: the account Save writes to, named only when more than one is unlocked. */
+  account?: string;
 };
 
 /** Options echoed by `generate` (and accepted on the request) — same keys as the app Generator prefs. */
@@ -43,6 +45,8 @@ export type Reply = {
   rows?: Row[];
   /** `match`: the Browser setting "Show suggestions when a field is focused". */
   autoShow?: boolean;
+  /** `pending`: the unlocked accounts a new login can go to (`id`, `name` = email), only when there is more than one. */
+  accounts?: Row[];
   username?: string;
   password?: string;
   /** `fill` only: the current one-time code, how many seconds it has left, and its period. */
@@ -63,6 +67,8 @@ export const COMMANDS: ReadonlySet<string> = new Set<Command>(['match', 'fill', 
 export type Request = {
   command: Command;
   query?: string;
+  /** `pending` Save: the unlocked account (an `accounts` id) to save a new login to. */
+  account?: string;
   username?: string;
   password?: string;
   /** `get` / `copy` / `generate`: for generate, `passphrase` asks for a passphrase instead of a password. */

@@ -98,6 +98,9 @@
     "save": "保存",
     "update": "更新",
     "saved": "已保存到 Triwarden。",
+    "savedTo": "已保存到 $1。",
+    "toAccount": "保存到 $1",
+    "chooseAccount": "保存到账户",
     "updated": "密码已更新。"
   }
 }

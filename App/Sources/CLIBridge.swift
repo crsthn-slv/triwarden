@@ -146,6 +146,13 @@ final class CLIBridge {
         // One entry per site and username: a retry after a typo replaces the first attempt instead of piling up. The same
         // password under another username on the site is the same attempt with the username edited (offered when a
         // suggested password was used, then again on submit), so it replaces too.
+        // With more than one unlocked account every prompt names the one Save writes to — captured here, used at
+        // answer time, so what the card says is what happens. An update writes in the existing login's account, so
+        // that account is the one named; a new login goes to the default account.
+        let accounts = model?.sessions ?? []
+        let accountID = (existing?.id).flatMap { id in items.first { $0.id == id }?.accountId }
+            ?? (accounts.count > 1 ? model?.defaultAccountId : nil)
+        let accountEmail = accountID.flatMap { id in accounts.first { $0.id == id }?.account.email }
         let replaced = pendingSaves.filter { $0.key == key || ($0.host == host && $0.password == password) }
         if let same = replaced.first(where: { $0.key == key }), same.password == password, same.existingID == existing?.id {
             return "pending"
@@ -153,7 +160,8 @@ final class CLIBridge {
         pendingSaves.removeAll { old in replaced.contains { $0.id == old.id } }
         LoginSaveNotifier.withdraw(replaced.map(\.id))
         let pending = PendingLoginSave(host: host, scheme: scheme, username: username, password: password,
-                                       existingID: existing?.id, existingName: existing?.name)
+                                       existingID: existing?.id, existingName: existing?.name,
+                                       accountID: accountID, accountEmail: accountEmail)
         pendingSaves.append(pending)
         if pendingSaves.count > Self.maxPendingSaves {
             let dropped = pendingSaves.prefix(pendingSaves.count - Self.maxPendingSaves)
@@ -169,7 +177,8 @@ final class CLIBridge {
 
     /// Save (or update) a waiting login, or put it away with Not Now. False when it couldn't be written.
     @discardableResult
-    func answerSave(_ id: String, save: Bool) async -> Bool {
+    /// `accountID` sends a new login to another unlocked account than the one the prompt named.
+    func answerSave(_ id: String, save: Bool, accountID: String? = nil) async -> Bool {
         guard let index = pendingSaves.firstIndex(where: { $0.id == id }) else { return false }
         let pending = pendingSaves.remove(at: index)
         LoginSaveNotifier.withdraw([pending.id])
@@ -188,7 +197,7 @@ final class CLIBridge {
             let name = pending.host.hasPrefix("www.") ? String(pending.host.dropFirst(4)) : pending.host
             let edit = CipherEdit(name: name, username: pending.username, password: pending.password,
                                   uri: "\(pending.scheme)://\(pending.host)")
-            written = await model.createItem(.login, edit: edit)
+            written = await model.createItem(.login, edit: edit, accountId: accountID ?? pending.accountID)
         }
         // Offline or refused: keep it in the bell to try again, unless the vault locked meanwhile.
         if !written, model.isUnlocked, !pendingSaves.contains(where: { $0.key == pending.key }) {
@@ -322,9 +331,14 @@ final class CLIBridge {
             guard model.isUnlocked else { return .failure(Self.locked) }
             guard let host = request.url.flatMap(URL.init(string:))?.host()?.lowercased() else { return .list([]) }
             guard let id = request.query else {
-                return .list(pendingSaves.filter { $0.host == host }.map {
-                    CLIResponse.Row(id: $0.id, name: $0.existingName ?? "", detail: $0.username)
+                var reply = CLIResponse.list(pendingSaves.filter { $0.host == host }.map {
+                    CLIResponse.Row(id: $0.id, name: $0.existingName ?? "", detail: $0.username, account: $0.accountEmail)
                 })
+                // More than one unlocked account: the card can send a new login to another one.
+                if model.sessions.count > 1 {
+                    reply.accounts = model.sessions.map { CLIResponse.Row(id: $0.id, name: $0.account.email, detail: "") }
+                }
+                return reply
             }
             guard let pending = pendingSaves.first(where: { $0.id == id && $0.host == host }) else {
                 return .failure("Already answered in Triwarden.")
@@ -336,7 +350,13 @@ final class CLIBridge {
                     return .failure(Self.denied)
                 }
             }
-            return await answerSave(id, save: save)
+            // Another account, picked on the card: only for a new login (an update stays where the login is), and only
+            // one that is unlocked now.
+            let account = request.account.flatMap { model.session(for: $0) == nil ? nil : $0 }
+            if save, request.account != nil, account == nil || pending.isUpdate {
+                return .failure("Choose an unlocked account.")
+            }
+            return await answerSave(id, save: save, accountID: account)
                 ? .success("done") : .failure("Couldn't save it. It's still waiting in Triwarden.")
         case .status:
             return .success(model.isUnlocked
@@ -583,6 +603,9 @@ struct PendingLoginSave: Identifiable, Equatable, Sendable {
     /// The login whose password this replaces; nil saves a new login.
     let existingID: String?
     let existingName: String?
+    /// Where Save writes: set only with more than one unlocked account, so every prompt can say which one.
+    let accountID: String?
+    let accountEmail: String?
     let date = Date.now
 
     var key: String { Self.key(host: host, username: username) }
@@ -594,7 +617,9 @@ struct PendingLoginSave: Identifiable, Equatable, Sendable {
         let site = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
         return String(localized: "Save the login for \(site)?")
     }
-    var detail: String { username.isEmpty ? host : "\(username) · \(host)" }
+    var detail: String {
+        [username.isEmpty ? nil : username, host, accountEmail].compactMap(\.self).joined(separator: " · ")
+    }
 }
 
 /// The banner for a login waiting to be saved. Save and Not Now answer it right there; a click on the banner opens
@@ -624,15 +649,17 @@ enum LoginSaveNotifier {
         let body = pending.username.isEmpty
             ? String(localized: "From your browser · \(pending.host)")
             : String(localized: "\(pending.username) · from your browser")
+        // The account name only when it's ambiguous which vault Save writes to.
+        let bodyWithAccount = pending.accountEmail.map { body + " · " + $0 } ?? body
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .notDetermined:
                 center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-                    if granted { add(id: id, title: title, body: body, isUpdate: isUpdate, center: center) }
+                    if granted { add(id: id, title: title, body: bodyWithAccount, isUpdate: isUpdate, center: center) }
                 }
             case .authorized, .provisional:
-                add(id: id, title: title, body: body, isUpdate: isUpdate, center: center)
+                add(id: id, title: title, body: bodyWithAccount, isUpdate: isUpdate, center: center)
             default:
                 break // The bell and the menu bar panel still show it.
             }

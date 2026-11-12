@@ -942,6 +942,38 @@ button.note-action:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* With more than one unlocked account the account line opens the email menu's list to send a new login elsewhere. */
+.save-account {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0 -4px;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.save-account:hover {
+  background: var(--wash);
+}
+.save-account:focus-visible {
+  outline: 2px solid #0f74b3;
+  outline-offset: 1px;
+}
+.save-account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.save-accounts {
+  top: calc(100% + 6px);
+  right: 0;
+  width: 100%;
+}
 .save-error {
   margin-top: 4px;
   color: var(--error);

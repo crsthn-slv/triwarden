@@ -98,6 +98,9 @@
     "save": "保存",
     "update": "更新",
     "saved": "Triwarden に保存しました。",
+    "savedTo": "$1 に保存しました。",
+    "toAccount": "保存先: $1",
+    "chooseAccount": "保存先のアカウント",
     "updated": "パスワードを更新しました。"
   }
 }
