@@ -400,6 +400,7 @@ private struct ShelfCard: View {
             VStack(spacing: 6) {
                 AppSegmented(options: [(Tab.favorites, LocalizedStringKey("Favorites")), (.codes, "Codes"), (.recent, "Recent")],
                              selection: tab)
+                    .accessibilityLabel(Text("Items"))
                 if items.isEmpty {
                     Text(tab.wrappedValue == .favorites ? "Star items to keep them here." : tab.wrappedValue == .codes
                          ? "Add a code secret to a login to see it here." : "Nothing yet.")
@@ -427,7 +428,7 @@ private struct QuickRow: View {
     var fillsOnClick = false
     @State private var hovering = false
     /// Keyboard focus on the row reveals its buttons, as hover does. The row is one Tab stop; its buttons stay off
-    /// the Tab loop (Return and the Item menu shortcuts cover them, VoiceOver gets them as actions).
+    /// the Tab loop (Return does the click, VoiceOver gets each button as an action).
     @FocusState private var focused: Bool
     private var revealed: Bool { hovering || focused }
 
@@ -484,21 +485,17 @@ private struct QuickRow: View {
         .onTapGesture(perform: activate)
         .onHover { inside in withAnimation(.snappy(duration: 0.15)) { hovering = inside } }
         .pointerStyle(.link)
-        // Reachable by Tab; Return or Space does what a click does. The ring follows the row's rounded shape.
+        // Reachable by Tab (with Keyboard navigation on; a click never focuses it); Return or Space does what a click
+        // does. The ring follows the row's rounded shape.
         .contentShape(.focusEffect, .rect(cornerRadius: 11, style: .continuous))
-        .focusable()
+        .focusable(interactions: .activate)
         .focused($focused)
         .onKeyPress(keys: [.return, .space]) { _ in activate(); return .handled }
-        // The Item menu's copy shortcuts (⇧⌘C, ⌥⌘C, ⌃⌘C) follow the focused row: the hover buttons without a Tab stop each.
-        .onChange(of: focused) { _, now in
-            if now { model.panelFocusedItem = item } else if model.panelFocusedItem?.id == item.id { model.panelFocusedItem = nil }
-        }
         .animation(.snappy(duration: 0.15), value: focused)
         .appContextMenu(model.itemContextActions(item))
-        // One element for VoiceOver: activating it does the click; copy, open and fill are its actions.
+        // One element for VoiceOver: activating it does the click; the hover buttons are its actions.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: item.name))
-        .accessibilityValue(Text(verbatim: item.username ?? ""))
+        .accessibilityLabel(spokenLabel)
         .accessibilityHint(Text(hint))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(.default, activate)
@@ -506,7 +503,32 @@ private struct QuickRow: View {
             if QuickCopy.canFill(item, model), !fillsOnClick, let context = model.foreground {
                 Button("Fill into \(context.app)") { QuickCopy.fill(item, model) }
             }
+            if let username = item.username {
+                Button("Copy Username") { model.copy(username, label: String(localized: "Username")) }
+            }
+            if item.password != nil {
+                Button("Copy Password") { model.copyPassword(item) }
+            }
+            if let totp = item.totp {
+                Button("Copy code") { model.guarded(item) { model.copy(totp.code(), label: String(localized: "Code")) } }
+            }
+            if let host = item.host, let url = URL(string: "https://\(host)") {
+                Button("Open Website") { NSWorkspace.shared.open(url) }
+            }
         }
+    }
+
+    /// "GitHub, alexchen, code 2 6 2 8 4 3": all in the label, since VoiceOver on macOS reads a value before the
+    /// name. The code is spelled out digit by digit and read from the shared clock, so it's never an expired one.
+    /// ponytail: a code row so redraws once a second, not only its code; fine for the panel's handful of rows.
+    private var spokenLabel: Text {
+        var label = Text(verbatim: item.name)
+        if let username = item.username { label = label + Text(verbatim: ", \(username)") }
+        if let totp = item.totp {
+            let code = totp.code(at: Date(timeIntervalSince1970: TimeInterval(OTPClock.shared.second)))
+            label = label + Text(verbatim: ", ") + Text("Code") + Text(verbatim: " ") + Text(verbatim: code).speechSpellsOutCharacters()
+        }
+        return label
     }
 
     /// What a click (or Return, or VoiceOver's activate) does.
@@ -590,11 +612,14 @@ private struct QuickActions: View {
             VStack(spacing: 5) {
                 Image(systemName: symbol).font(.system(size: 15, weight: .medium)).foregroundStyle(.primary)
                     .frame(height: 18)
+                    // The label says it all; and a "checkmark…" symbol made VoiceOver call the tile "selected".
+                    .accessibilityHidden(true)
                     .overlay(alignment: .topTrailing) {
                         if badge > 0 {
                             Text(verbatim: "\(badge)").font(.system(size: 10, weight: .bold)).foregroundStyle(.black) // black on orange reads at about 10:1; white was 2:1
                                 .padding(.horizontal, 4).frame(minWidth: 15, minHeight: 15)
-                                .background(Color.orange, in: .capsule)
+                                // sRGB, not .orange: the system colour picks up the panel's vibrancy and reads translucent.
+                                .background(Color(.sRGB, red: 1, green: 0.584, blue: 0, opacity: 1), in: .capsule)
                                 .fixedSize() // its own width: laid out in the icon's, "56" came out as "5…"
                                 .offset(x: 12, y: -7)
                         }
@@ -607,8 +632,8 @@ private struct QuickActions: View {
             .shadow(color: .menuShadow, radius: 5, y: 1)
         }
         .buttonStyle(.hover(cornerRadius: 14))
-        .accessibilityLabel(Text(title))
-        .accessibilityValue(badge > 0 ? Text("^[\(badge) issue](inflect: true)") : Text(verbatim: ""))
+        // "Watchtower, 1 issue": the count in the label, since VoiceOver on macOS reads a value before the name.
+        .accessibilityLabel(badge > 0 ? Text(title) + Text(verbatim: ", ") + Text("^[\(badge) issue](inflect: true)") : Text(title))
     }
 }
 
@@ -640,6 +665,7 @@ private struct GeneratorCard: View {
                     AppSegmented(options: [(false, LocalizedStringKey("Password")), (true, "Passphrase")],
                                  selection: Binding(get: { passphrase },
                                                     set: { storedMode = ($0 ? GeneratorView.Mode.passphrase : .password).rawValue }))
+                        .accessibilityLabel(Text("Generator"))
                         .frame(width: 190)
                         .controlSize(.small)
                     Button { showGenerator = true } label: {
@@ -661,8 +687,8 @@ private struct GeneratorCard: View {
                 ColoredSecret(value: value, separator: passphrase ? phrase.separator : nil)
                     .font(.system(size: 13, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel(passphrase ? Text("Generated passphrase") : Text("Generated password"))
-                    .accessibilityValue(Text(verbatim: value))
+                    // Name first: VoiceOver on macOS reads a value before the name.
+                    .accessibilityLabel((passphrase ? Text("Generated passphrase") : Text("Generated password")) + Text(verbatim: ", \(value)"))
                     .accessibilityAddTraits(.isStaticText)
                 HStack(spacing: 6) {
                     StrengthMeter(bits: passphrase ? phrase.entropyBits : password.entropyBits)
