@@ -12,9 +12,11 @@ with the `accessibility` label.
   reveal/hide, copy *field*, generate password, remove field, clear search, retry Touch ID, open item.
 - Vault rows, Quick Search results and AutoFill rows read as one element (name, then username or site),
   with the button trait. The selected vault row also has the selected trait.
-- Menu bar panel rows read the same way, with a hint for what a click does (“Copies the code”) and
-  “Fill into *app*” as an action. The status dot in the footer always reads the sync state and server.
-- Segmented controls (Favorites / Codes / Recent, Password / Passphrase, …) read as one segmented control.
+- Menu bar panel rows read the same way (a code row also reads its current code), with a hint for what a
+  click does (“Copies the code”). Copy Username, Copy Password, Copy code, Open Website and “Fill into *app*”
+  are its actions. The status dot in the footer always reads the sync state and server.
+- Segmented controls (Favorites / Codes / Recent, Password / Passphrase, …) read as a named group of buttons, the
+  chosen one “selected”.
 - Watchtower and password strength never rely on colour alone. Each colour dot has a text label
   (“Weak”, “Reused in 2 items”, “Strong · unique”).
 - Secrets are hidden by default and announced as secure text until you choose Reveal.
@@ -32,8 +34,8 @@ with the `accessibility` label.
 | Password generator | ⌘G |
 | Command palette from anywhere | ⇧⌘Space by default (Settings › Shortcuts); ↑ / ↓ selects, ↵ opens, ⌘↵ copies password, ⌥↵ copies code, Esc closes. Over another app: ↵ types both fields, ⌃↵ username, ⌥↵ password, ⇧ also submits |
 | AutoFill picker | type to search, ↑ / ↓, Return to fill or sign in |
-| Menu bar panel | Tab moves between search, tabs and items; Return or Space does what a click does; ⇧⌘C / ⌥⌘C / ⌃⌘C copy the focused item's username / password / code |
-| Segmented controls | ← / → choose |
+| Menu bar panel | Tab moves between search, tabs and items (with Keyboard navigation on in System Settings); Return or Space does what a click does |
+| Segmented controls | Tab moves between the choices (with Keyboard navigation on); Space chooses |
 | Lock | ⇧⌘L |
 | Sheets and dialogs | Return confirms, Esc cancels |
 
