@@ -285,8 +285,6 @@ final class AppModel {
     /// Selected item, shared by the list, detail and the Item menu commands.
     var selectedID: VaultItem.ID?
     var selectedItem: VaultItem? { items.first { $0.id == selectedID } }
-    /// The menu bar panel row with keyboard focus: the Item menu's shortcuts (⇧⌘C, ⌥⌘C, ⌃⌘C) act on it while it has focus.
-    var panelFocusedItem: VaultItem?
     /// True while the New Folder prompt is showing.
     var promptingNewFolder = false
     /// Set to open the Keyboard Shortcuts window (from the palette); the root view opens it and clears this.

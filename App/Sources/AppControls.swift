@@ -191,7 +191,10 @@ struct AppSegmented<Value: Hashable>: View {
                 }
                 .buttonStyle(.plain)
                 .pointerStyle(.link)
-                .focusable(false) // the whole control is one Tab stop; arrows move the selection
+                // Each segment is a plain button: a Tab stop with Keyboard navigation on (a click never focuses it),
+                // Space chooses, and its focus ring hugs the segment.
+                .contentShape(.focusEffect, .capsule)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
         .background(alignment: .leading) {
@@ -203,21 +206,11 @@ struct AppSegmented<Value: Hashable>: View {
         }
         .padding(compact ? 2 : 3)
         .background(dark ? Color.white.opacity(0.06) : Color.black.opacity(0.05), in: .capsule)
-        // A segmented control, not a row of buttons: one Tab stop, ← → to choose, a radio group to VoiceOver.
-        .contentShape(.focusEffect, .capsule) // before .focusable, or the ring stays square
-        .focusable()
-        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
-            let next = selectedIndex + (press.key == .leftArrow ? -1 : 1)
-            guard options.indices.contains(next) else { return .ignored }
-            withAnimation(motion) { selection = options[next].0 }
-            return .handled
-        }
-        .accessibilityRepresentation {
-            Picker(selection: $selection) {
-                ForEach(Array(options.enumerated()), id: \.offset) { _, option in Text(option.1).tag(option.0) }
-            } label: { EmptyView() }
-            .pickerStyle(.segmented)
-        }
+        // VoiceOver: a group named by the caller's .accessibilityLabel, holding one button per segment, the chosen one
+        // "selected" ("Codes, selected, button"). Tried and dropped: one adjustable element (read "Codes Items", with
+        // no role or way to change it), a system Picker as its representation (tabs with no names), and a focusable
+        // container with ← → (Tab could no longer leave the menu bar panel's search field).
+        .accessibilityElement(children: .contain)
         .onPreferenceChange(SegmentWidthKey.self) { new in
             let changed = new.count != widths.count || new.contains { index, width in
                 abs((widths[index] ?? 0) - width) > 0.5
