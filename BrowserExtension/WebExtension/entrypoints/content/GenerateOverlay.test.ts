@@ -94,6 +94,8 @@ describe('GenerateOverlay', () => {
     const host = await mount();
     const keys = host.querySelectorAll<HTMLButtonElement>('.key');
     expect(keys).toHaveLength(2); // the new password, and the sign-up's email field
+    // The field rect is 0–300; the icon sits just to its right, not over the value.
+    expect(keys[0]!.style.left).toBe('300px');
     keys[0]!.click();
     await tick(5);
     expect(host.querySelector('.gen-value')!.textContent).toBe('Gen3rated!Pw');
@@ -192,9 +194,10 @@ describe('GenerateOverlay', () => {
     await tick(5);
     const card = host.querySelector<HTMLElement>('.menu.gen')!;
     const handle = host.querySelector<HTMLElement>('.gen-drag')!;
-    // It opens next to its field; the drag moves it from there (left/top via menuPos + direct DOM).
-    const startLeft = Number.parseFloat(card.style.left);
-    const startTop = Number.parseFloat(card.style.top);
+    // Seed a known place so the test does not depend on jsdom layout.
+    card.style.left = '40px';
+    card.style.top = '80px';
+    // Solid owns style on re-render; dispatch drag which writes left/top via menuPos + direct DOM.
     handle.dispatchEvent(
       new PointerEvent('pointerdown', {
         button: 0,
@@ -227,8 +230,9 @@ describe('GenerateOverlay', () => {
 
     const left = Number.parseFloat(card.style.left);
     const top = Number.parseFloat(card.style.top);
-    // Moved +X and -Y, and release keeps the place (no snap-back to the field).
-    expect(left).toBeGreaterThan(startLeft);
-    expect(top).toBeLessThan(startTop);
+    expect(left).toBeGreaterThan(40); // moved +X
+    expect(top).toBeLessThan(80); // moved -Y
+    // Release must keep the place (no snap-back to the pre-drag spot).
+    expect(left).not.toBe(40);
   });
 });

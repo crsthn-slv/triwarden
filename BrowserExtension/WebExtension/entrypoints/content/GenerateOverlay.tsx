@@ -226,7 +226,7 @@ export default function GenerateOverlay() {
   const place = (t: Target) => {
     tick();
     if (!t.field.isConnected || !visible(t.field)) return { display: 'none' };
-    return iconPosition(t.field.getBoundingClientRect(), isRTL(t.field), false);
+    return iconPosition(t.field.getBoundingClientRect(), isRTL(t.field), innerWidth);
   };
 
   const fixedAt = (left: string, top: string, width: number) =>
