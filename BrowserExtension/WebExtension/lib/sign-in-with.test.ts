@@ -17,6 +17,12 @@ describe('closed provider list', () => {
     expect(providerFromName('Microsoft account')).toBe('microsoft');
     expect(providerFromName('Outlook')).toBe('microsoft');
     expect(providerFromName('your Google Account')).toBe('google');
+    expect(providerFromName('Apple ID')).toBe('apple');
+    expect(providerFromName('Apple Pay')).toBeNull();
+    expect(providerFromName('Google Maps')).toBeNull();
+    expect(providerFromName('Google →')).toBe('google');
+    expect(providerFromName('Google帐号')).toBe('google');
+    expect(providerFromUrl(new URL('https://appleid.apple.com/account/manage'))).toBeNull();
     expect(providerFromName('Spotify')).toBeNull();
     expect(providerFromName('Bitbucket')).toBeNull();
     expect(providerFromName('constructor')).toBeNull();

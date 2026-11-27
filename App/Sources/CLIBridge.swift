@@ -133,11 +133,15 @@ final class CLIBridge {
     }
 
     /// What a "Sign in with" on the site means for the vault: already remembered (same provider, and the same account
-    /// when the page showed one), or new. It never changes an existing login.
+    /// when the page showed one), or new. The only change to an existing login: an email for one saved without it
+    /// (the provider skipped its chooser that time), so the same account is not saved twice.
     static func decide(host: String, username: String, provider: SignInProvider, items: [VaultItem]) -> SaveDecision {
         let known = Self.logins(for: host, in: items).filter { $0.signInProvider == provider }
-        let same = known.contains { username.isEmpty || ($0.username ?? "").caseInsensitiveCompare(username) == .orderedSame }
-        return same ? .unchanged : .add
+        if known.contains(where: { username.isEmpty || ($0.username ?? "").caseInsensitiveCompare(username) == .orderedSame }) {
+            return .unchanged
+        }
+        if let bare = known.first(where: { ($0.username ?? "").isEmpty }) { return .update(existingID: bare.id, name: bare.name) }
+        return .add
     }
 
     /// Queues a submitted login for you to answer later, without taking the screen. Returns what happened.
@@ -205,7 +209,9 @@ final class CLIBridge {
         // The login it would update may have gone since: then it is a new login after all.
         if let existingID = pending.existingID,
            model.items.contains(where: { $0.id == existingID && !$0.isDeleted && !$0.isArchived }) {
-            written = await model.updateItem(existingID, edit: CipherEdit(password: pending.password))
+            // A "Sign in with" login gets the email it was missing; it has no password to replace.
+            let edit = pending.provider == nil ? CipherEdit(password: pending.password) : CipherEdit(username: pending.username)
+            written = await model.updateItem(existingID, edit: edit)
         } else {
             let name = pending.host.hasPrefix("www.") ? String(pending.host.dropFirst(4)) : pending.host
             var edit = CipherEdit(name: name, username: pending.username, password: pending.password,
@@ -293,11 +299,12 @@ final class CLIBridge {
             // A code reveal a moment ago on this site covers the fill that follows, except for logins that ask for the
             // master password: those are never waved through.
             let revealed = !item.reprompt && (revealedSites[host.lowercased()].map { $0 > .now } ?? false)
-            if !revealed {
-                guard await approve(String(localized: "fill “\(item.name)” on \(host)"), peer: peer, browser: true) else { return .failure(Self.denied) }
-            }
+            // Refused before Touch ID: there is nothing to fill, so nothing to approve.
             if item.password == nil, let provider = item.signInProvider {
                 return .failure("“\(item.name)” signs in with \(provider.displayName): use that button on the page.")
+            }
+            if !revealed {
+                guard await approve(String(localized: "fill “\(item.name)” on \(host)"), peer: peer, browser: true) else { return .failure(Self.denied) }
             }
             lastFilled[item.id] = .now
             guard let totp = item.totp else { return .credentials(username: item.username, password: item.password, totp: nil) }
@@ -346,11 +353,12 @@ final class CLIBridge {
                 return .failure("Nothing to save.")
             }
             let username = (request.username ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            // "Sign in with": only a provider on our own list, and only an email-shaped account name (the page chose it).
+            // "Sign in with": only a provider on our own list. An account name that is not email-shaped (the page chose
+            // it) is dropped, not the save: the sign-in method is still worth remembering.
             if let raw = request.provider {
-                guard let provider = SignInProvider(rawValue: raw), request.password == nil,
-                      username.isEmpty || SignInProvider.isEmail(username) else { return .failure("Nothing to save.") }
-                return .success(queueSave(host: host, scheme: url.scheme ?? "https", username: username, password: "",
+                guard let provider = SignInProvider(rawValue: raw), request.password == nil else { return .failure("Nothing to save.") }
+                let email = SignInProvider.isEmail(username) ? username : ""
+                return .success(queueSave(host: host, scheme: url.scheme ?? "https", username: email, password: "",
                                           provider: provider, items: model.items))
             }
             guard let password = request.password, !password.isEmpty else { return .failure("Nothing to save.") }

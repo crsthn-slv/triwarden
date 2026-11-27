@@ -107,6 +107,8 @@ export default function Overlay() {
   let filling = false; // we are putting values in fields: that moves focus, and must not open the menu again
   let toastTimer: number | undefined;
   let askedLastUsed = false; // one quiet match per page, once a "Sign in with" button shows up
+  // Looking for provider buttons costs time on big pages: with none on screen, only for a while after load or a click.
+  let lookUntil = Date.now() + 10_000;
 
   const close = () => {
     asking++;
@@ -164,6 +166,7 @@ export default function Overlay() {
   /** Top frame only (a button in another frame cannot be pressed from here). Looks again only while there is a card to show. */
   function scanProviderButtons() {
     if (window !== window.top || (askedLastUsed && !lastUsed().length)) return;
+    if (!buttons().length && Date.now() > lookUntil) return;
     setButtons(findProviderButtons());
     if (askedLastUsed || !buttons().length) return;
     askedLastUsed = true;
@@ -385,6 +388,7 @@ export default function Overlay() {
       timer = window.setTimeout(scan, 250);
     };
     const move = () => setTick((n) => n + 1);
+    const clicked = () => (lookUntil = Date.now() + 5_000); // a click may open a login dialog
     const observer = new MutationObserver(rescan);
     observer.observe(document.documentElement, {
       childList: true,
@@ -436,6 +440,7 @@ export default function Overlay() {
     addEventListener('scroll', move, { passive: true, capture: true });
     addEventListener('resize', move, { passive: true });
     document.addEventListener('mousedown', outside, true);
+    document.addEventListener('click', clicked, true);
     document.addEventListener('keydown', keys, true);
     document.addEventListener('focusin', focused, true);
     onCleanup(() => {
@@ -446,6 +451,7 @@ export default function Overlay() {
       removeEventListener('scroll', move, true);
       removeEventListener('resize', move);
       document.removeEventListener('mousedown', outside, true);
+      document.removeEventListener('click', clicked, true);
       document.removeEventListener('keydown', keys, true);
       document.removeEventListener('focusin', focused, true);
     });

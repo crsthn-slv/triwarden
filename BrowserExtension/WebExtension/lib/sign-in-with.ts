@@ -43,20 +43,21 @@ const normalize = (raw: string): string =>
     .toLowerCase()
     .trim()
     .replace(/^(your|sua|su|votre|dein|o|a)\s+/, '')
-    .replace(/[.!…]+$/, '')
+    .replace(/[^\p{L}\p{N}]+$/u, '') // "Google.", "Google →"
     .trim();
 
 /** A provider's name or alias ("Microsoft account", "Twitter", "Outlook") -> its id; anything else -> null. */
 export function providerFromName(raw: string): Provider | null {
   const name = normalize(raw);
   if (!name || EXCLUDED.test(name)) return null;
-  return ALIASES.get(name) ?? ALIASES.get(name.split(/[\s-]+/)[0]!) ?? null;
+  // The whole name only: "Apple Pay" and "Google Maps" are not sign-ins.
+  return ALIASES.get(name) ?? ALIASES.get(name.replace(/[\s-]*(account|id|konto|アカウント|帐号|帳號|账号|계정)$/, '')) ?? null;
 }
 
 /** [host, path (null = any), provider]: addresses that are a provider's sign-in or consent page. */
 const RULES: Array<[RegExp, RegExp | null, Provider]> = [
   [/^accounts\.google\.[a-z.]+$/, null, 'google'],
-  [/^appleid\.apple\.com$/, null, 'apple'],
+  [/^appleid\.apple\.com$/, /^\/auth\//, 'apple'],
   [/^login\.(microsoftonline|live)\.com$/, null, 'microsoft'],
   [/^github\.com$/, /^\/login\/oauth/, 'github'],
   [/(^|\.)facebook\.com$/, /^\/(v[\d.]+\/)?dialog\//, 'facebook'],
@@ -237,7 +238,7 @@ export function findProviderButtons(root: ParentNode = document): Array<{ el: El
     const provider = detectProvider(el);
     if (provider) found.push({ el, provider });
   }
-  // ponytail: walks every text node on each scan; fine for login pages, cap it if a huge page ever stutters.
+  // ponytail: walks every text node; the overlay calls this only for a few seconds after load or a click.
   const walker = document.createTreeWalker(root instanceof Document ? root.body ?? root : root, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const text = n as Text;

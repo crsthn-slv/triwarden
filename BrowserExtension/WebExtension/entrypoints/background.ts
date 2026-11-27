@@ -94,7 +94,7 @@ function handleSignIn(message: { signIn?: string; provider?: unknown; email?: un
       const page = new URL(sender.url);
       const flow = idpSite(page);
       const provider = flow?.provider ?? providerFromUrl(page);
-      const email = typeof message.email === 'string' && /^[^\s@]+@[^\s@]+$/.test(message.email) ? message.email.slice(0, 254) : undefined;
+      const email = typeof message.email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(message.email) ? message.email.slice(0, 254) : undefined;
       if (provider) await setAttempts(visit(list, flow?.site, provider, email, now));
     } else if (message.signIn === 'arrive' && top) {
       const host = hostOf(sender.url);
